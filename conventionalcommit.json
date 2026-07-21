@@ -1,0 +1,57 @@
+{
+  "types": {
+    "fix": {
+      "description": "Changes which patch a bug"
+    },
+    "feat": {
+      "description": "Changes which introduce a new feature"
+    },
+    "build": {
+      "description": "Changes which affect the build system or external dependencies.<br>Example scopes: gulp, broccoli, npm"
+    },
+    "ci": {
+      "description": "Changes which affect CI configuration files and scripts.<br>Example scopes: travis, circle, browser-stack, sauce-labs"
+    },
+    "docs": {
+      "description": "Changes which affect documentation"
+    },
+    "style": {
+      "description": "Changes which do not affect code logic, such as whitespaces, formatting, missing semicolons"
+    },
+    "refactor": {
+      "description": "Changes which neither fix a bug nor add a feature"
+    },
+    "perf": {
+      "description": "Changes which improve performance"
+    },
+    "test": {
+      "description": "Changes which add missing tests or fix existing ones"
+    },
+    "revert": {
+      "description": "Changes which revert a previous commit"
+    },
+    "remove": {
+      "description": "Changes which remove files or code"
+    },
+    "chore": {
+      "description": "Changes which are not user-facing"
+    },
+    "mixed": {
+      "description": "!!!DO NOT USE!!! Changes which include multiple types"
+    }
+  },
+  "footerTypes": [
+    {
+      "name": "BREAKING-CHANGE",
+      "description": "The commit introduces breaking API changes"
+    },
+    {
+      "name": "Issue",
+      "description": "A commit implements the specified issue"
+    },
+    {
+      "name": "Original-Commit",
+      "description": "The commit that is reverted or fixed in this commit."
+    }
+  ]
+}
