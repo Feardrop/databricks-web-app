@@ -29,6 +29,7 @@ class TokenProvider(ABC):
     def __init__(self, config: AppConfig) -> None:
         """Initialize the TokenProvider."""
         self.config = config
+        assert config.databricks_host, "AppConfig validation guarantees this is set."
         self.connection = Connection(
             server_hostname=config.databricks_host,
             http_path=config.databricks_http_path,

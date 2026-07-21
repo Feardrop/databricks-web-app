@@ -52,7 +52,13 @@ class DatabricksApp(Generic[Connector]):
     def databricks_handler(self) -> Connector:
         """Return a Databricks connector object."""
         if self._databricks_handler is None:
-            self._databricks_handler = self.connector_class(self._databricks_config)
+            # Concrete connectors accept only `config`; the extra
+            # `handler_factory` argument on AbstractConnector.__init__ documents
+            # the pattern subclasses follow rather than a call signature mypy
+            # can verify against `type[Connector]`.
+            self._databricks_handler = self.connector_class(
+                self._databricks_config  # type: ignore[call-arg]
+            )
 
         assert isinstance(self._databricks_handler, self.connector_class)
         return self._databricks_handler

@@ -6,17 +6,39 @@ build-backend = "setuptools.build_meta"
 name = "databricks-web-app"
 version = "0.0.1"
 description = "Reusable Python helpers for Solara web apps that authenticate users and query Databricks through OAuth and machine-to-machine flows."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
+authors = [
+    { name = "Feardrop", email = "nphilipps@live.de" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
 dependencies = [
     "databricks-sql-connector[pyarrow]",
+    "pandas",
+    "pyjwt",
     "python-dotenv",
+    "requests",
     "solara>=1.29",
     "starlette<1",
     "typing-extensions",
 ]
 
+[project.urls]
+Repository = "https://github.com/feardrop/databricks-web-app"
+Changelog = "https://github.com/feardrop/databricks-web-app/blob/main/CHANGELOG.md"
+
 [tool.setuptools.packages.find]
 include = ["databricks_web_app*"]
+
+[tool.setuptools.package-data]
+databricks_web_app = ["py.typed"]
 
 [tool.isort]
 profile = "black"
