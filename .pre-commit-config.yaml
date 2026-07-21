@@ -1,0 +1,45 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.15.22
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 8.0.1
+    hooks:
+      - id: isort
+
+  - repo: local
+    hooks:
+      - id: pydoclint
+        name: pydoclint
+        entry: pydoclint --config=pyproject.toml
+        language: system
+        files: ^(databricks_web_app|tests)/
+        types_or: [python, pyi]
+
+      - id: pydocstyle
+        name: pydocstyle
+        entry: pydocstyle
+        language: system
+        files: ^(databricks_web_app|tests)/
+        types_or: [python, pyi]
