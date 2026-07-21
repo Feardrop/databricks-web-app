@@ -1,0 +1,6 @@
+databricks-sql-connector[pyarrow]
+python-dotenv
+solara==1.29
+starlette<1  # See https://github.com/widgetti/solara/issues/1143
+typing-extensions
+uvicorn==0.35.0

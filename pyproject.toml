@@ -1,0 +1,45 @@
+[project]
+name = "databricks-web-app"
+version = "0.0.1"
+description = "Reusable Python helpers for Solara web apps that authenticate users and query Databricks through OAuth and machine-to-machine flows."
+requires-python = ">=3.10"
+
+[tool.isort]
+profile = "black"
+#import_heading_stdlib = "STDLIB"
+#import_heading_firstparty = "FIRSTPARTY"
+#import_heading_thirdparty = "THIRDPARTY"
+#import_heading_localfolder = "LOCALFOLDER"
+known_local_folder = []
+known_first_party = ["databricks_web_app"]
+sections = ["FUTURE", "STDLIB", "FIRSTPARTY", "THIRDPARTY", "LOCALFOLDER"]
+extend_skip = ["venv"]
+
+[tool.ruff]
+show-fixes = true
+# ignore unused imports in package exports
+lint.per-file-ignores."__init__.py" = ["F401"]
+
+[tool.pydoclint]
+style = "google"
+allow-init-docstring = true
+# Disable type hints check, as those should not be given explicitly in the
+# docstring. They are automatically added to the rendered docstring by
+# sphinx.ext.autodoc.
+# Actual type checking is done by mypy.
+check-type-hint = false
+
+[tool.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+markers = [
+    "slow: marks tests as slow, use e.g. for tests requiring a Databricks connection",
+]
+
+[tool.mypy]
+exclude = [
+    "^venv",
+]
+ignore_missing_imports = true

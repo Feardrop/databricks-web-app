@@ -1,0 +1,17 @@
+-r requirements.txt
+
+black
+isort
+jsonschema[format-nongpl]
+mypy
+pip-tools
+pre-commit>=3.2
+pydoclint==0.0.8
+pydocstyle[toml]
+sphinx
+sphinx-autoapi
+sphinx-copybutton
+sphinx-rtd-size
+sphinx-rtd-theme
+sphinxcontrib.bibtex==2.5.0  # To avoid incompatibilities
+types-requests
