@@ -7,7 +7,13 @@ from databricks_web_app.error_handlers.authentication import (
     ClientSecretExpiredErrorDialog,
     TokenExpiredErrorDialog,
 )
-from databricks_web_app.error_handlers.components import RichErrorDialogConfig
+from databricks_web_app.error_handlers.components import (
+    ErrorDetail,
+    ErrorLink,
+    RichErrorDialogBase,
+    RichErrorDialogConfig,
+    _get_mailto_link,
+)
 from databricks_web_app.error_handlers.databricks import (
     DatabricksInvalidAccessTokenErrorDialog,
     DatabricksPermissionErrorDialog,
@@ -17,6 +23,8 @@ from databricks_web_app.error_handlers.generic import GenericApplicationErrorDia
 import jwt
 import pytest
 import requests
+
+from .conftest import make_environ
 
 
 class TestRichErrorDialogConfig:
@@ -149,3 +157,126 @@ class TestGenericApplicationErrorDialog:
             detail.label == "Missing key or column" and detail.value == "missing_column"
             for detail in dialog_config.details
         )
+
+
+class TestInstructionsHtml:
+    """Tests for RichErrorDialogBase.instructions_html and its escaping."""
+
+    def test_renders_one_list_item_per_instruction(self):
+        html_out = RichErrorDialogBase.instructions_html(
+            instructions=["Do this.", "Then do that."],
+            links=[],
+        )
+
+        assert html_out.count("<li>") == 2
+        assert "Do this." in html_out
+        assert "Then do that." in html_out
+
+    def test_escapes_instruction_text(self):
+        html_out = RichErrorDialogBase.instructions_html(
+            instructions=["<script>alert(1)</script>"],
+            links=[],
+        )
+
+        assert "<script>" not in html_out
+        assert "&lt;script&gt;" in html_out
+
+    def test_replaces_link_label_with_anchor(self):
+        html_out = RichErrorDialogBase.instructions_html(
+            instructions=["See Data Access Management for details."],
+            links=[
+                ErrorLink(label="Data Access Management", url="https://example.com")
+            ],
+        )
+
+        assert '<a href="https://example.com"' in html_out
+        assert 'target="_blank"' in html_out
+        assert ">Data Access Management</a>" in html_out
+
+
+class TestDetailsSectionHtml:
+    """Tests for RichErrorDialogBase._details_section_html."""
+
+    def test_empty_when_no_details(self):
+        assert RichErrorDialogBase._details_section_html(None) == ""
+        assert RichErrorDialogBase._details_section_html([]) == ""
+
+    def test_renders_escaped_label_and_value(self):
+        details = [ErrorDetail(label="<b>Table</b>", value="main.default.foo")]
+
+        html_out = RichErrorDialogBase._details_section_html(details)
+
+        assert "&lt;b&gt;Table&lt;/b&gt;" in html_out
+        assert "main.default.foo" in html_out
+
+
+class TestTracebackSectionHtml:
+    """Tests for RichErrorDialogBase._traceback_section_html."""
+
+    def test_empty_when_no_traceback(self):
+        assert RichErrorDialogBase._traceback_section_html(None) == ""
+
+    def test_escapes_traceback_text(self):
+        html_out = RichErrorDialogBase._traceback_section_html(
+            "Traceback: <boom> & 'quote'"
+        )
+
+        assert "<boom>" not in html_out
+        assert "&lt;boom&gt;" in html_out
+        assert "&amp;" in html_out
+
+
+class TestBodyHtml:
+    """Tests for RichErrorDialogBase.body_html assembling the full dialog."""
+
+    def test_includes_title_and_description(self):
+        config = RichErrorDialogConfig(title="Something broke", description="Details.")
+
+        html_out = RichErrorDialogBase.body_html(config)
+
+        assert "Something broke" in html_out
+        assert "Details." in html_out
+
+    def test_omits_optional_sections_when_absent(self):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        html_out = RichErrorDialogBase.body_html(config)
+
+        assert "Complete error details" not in html_out
+
+    def test_includes_traceback_section_when_present(self):
+        config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        html_out = RichErrorDialogBase.body_html(config)
+
+        assert "Complete error details" in html_out
+        assert "Traceback: boom" in html_out
+
+
+class TestGetMailtoLink:
+    """Tests for _get_mailto_link."""
+
+    def test_returns_none_without_contact_email(self, app_config: AppConfig):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        assert _get_mailto_link(config, app_config) is None
+
+    def test_builds_mailto_link_with_subject_and_body(
+        self, valid_environ: dict[str, str]
+    ):
+        environ = make_environ(valid_environ, CONTACT_EMAIL="dev@example.com")
+        config_with_contact = AppConfig(environ=environ)
+        dialog_config = RichErrorDialogConfig(
+            title="Something broke",
+            description="It broke because of X.",
+            traceback_text="Traceback: boom",
+        )
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert link.startswith("mailto:dev@example.com?subject=")
+        assert "Something%20broke" in link
+        assert "Traceback%3A%20boom" in link
