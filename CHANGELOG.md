@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Test coverage for previously-untested modules: `handlers/sql_handler.py`
+  (`AccessTokenUserHandler`/`AzureSPM2MOauthHandler` connection setup),
+  `auth/token_providers.py` (`UserTokenProvider._verify_token`,
+  `TokenProvider._tenant_id`), and the pure HTML builders in
+  `error_handlers/components.py`, plus a direct test of
+  `AbstractHandler.get_dataframe`. Fixes #6.
+- CI now runs `pytest --cov`, reports a per-Python-version coverage table
+  in the job summary, and fails if `databricks_web_app/` coverage drops
+  below 75% (baseline is ~81%). Part of #6.
+
 ### Fixed
 
 - `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
