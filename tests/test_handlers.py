@@ -108,6 +108,42 @@ def _make_handler(
     return handler, connection, cursor
 
 
+class TestGetDataframe:
+    """Direct tests for AbstractHandler.get_dataframe (arrow and non-arrow)."""
+
+    def test_arrow_path_returns_dataframe(self, app_config: AppConfig):
+        _, connection, _ = _make_handler(app_config)
+
+        with connection as conn:
+            df = AbstractHandler.get_dataframe("SELECT 1", conn, arrow=True)
+
+        assert list(df.columns) == ["col1", "col2"]
+        assert df.to_dict("records") == [
+            {"col1": 1, "col2": 2},
+            {"col1": 3, "col2": 4},
+        ]
+
+    def test_non_arrow_path_returns_dataframe(self, app_config: AppConfig):
+        _, connection, _ = _make_handler(app_config)
+
+        with connection as conn:
+            df = AbstractHandler.get_dataframe("SELECT 1", conn, arrow=False)
+
+        assert list(df.columns) == ["col1", "col2"]
+        assert df.to_dict("records") == [
+            {"col1": 1, "col2": 2},
+            {"col1": 3, "col2": 4},
+        ]
+
+    def test_executes_given_statement(self, app_config: AppConfig):
+        _, connection, cursor = _make_handler(app_config)
+
+        with connection as conn:
+            AbstractHandler.get_dataframe("SELECT 42", conn)
+
+        assert cursor.executed == ["SELECT 42"]
+
+
 class TestFetchallDf:
     """Tests for AbstractHandler.fetchall_df (and get_dataframe)."""
 

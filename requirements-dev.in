@@ -10,4 +10,5 @@ pre-commit>=3.2
 pydoclint==0.0.8
 pydocstyle[toml]
 pytest
+pytest-cov
 ruff

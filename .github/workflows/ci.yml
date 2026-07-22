@@ -64,10 +64,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install pytest httpx
+          pip install pytest pytest-cov httpx
 
       - name: pytest
-        run: pytest -m "not slow"
+        run: pytest -m "not slow" --cov=databricks_web_app --cov-report=term-missing
+
+      - name: Add coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Coverage (Python ${{ matrix.python-version }})"
+            echo '```'
+            coverage report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # `test` is a matrix job, so GitHub reports each entry as its own check
   # ("test (3.10)", "test (3.11)", ...) and never a check literally named
