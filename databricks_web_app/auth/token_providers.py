@@ -116,14 +116,13 @@ class UserTokenProvider(TokenProvider):
         if token.count(".") != 2:
             if DEBUG:
                 print("Omit token verification as token is likely an opaque one.")
-                print(f"{token=}")
             return token
 
         # Get public key with which JWT is signed from IdP.
         signing_key = self._jwks_client.get_signing_key_from_jwt(token)
 
         try:
-            decoded_token = jwt.decode(
+            jwt.decode(
                 token,
                 key=signing_key.key,
                 # Entra always signs tokens with RS256 (RSA + SHA-256)
@@ -135,8 +134,6 @@ class UserTokenProvider(TokenProvider):
                 # v2 token
                 issuer=self._issuer,  # v1 token
             )
-            if DEBUG:
-                print(f"{decoded_token=}")
         except jwt.exceptions.ExpiredSignatureError as exc:
             raise jwt.exceptions.ExpiredSignatureError(
                 "Token for data has expired."
