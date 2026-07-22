@@ -105,8 +105,8 @@ def get_server_app() -> "Starlette":
                 exec uvicorn --workers 1 --host 0.0.0.0 \
                     --port <your-preferred-port> \
                     server_app:app \
-                    --ssl-keyfile=../ssl/priv-key.pem \
-                    --ssl-certfile=../ssl/fullchain.pem \
+                    --ssl-keyfile=<path-to-priv-key.pem> \
+                    --ssl-certfile=<path-to-fullchain.pem> \
                     --proxy-headers \
                     --root-path <path-to-server-app.py-file>
             fi
