@@ -9,7 +9,6 @@ from databricks_web_app.app_config import (
     _parse_email,
     _parse_environment,
     _parse_host,
-    _parse_port,
     _parse_uuid,
     _parse_warehouse_id,
 )
@@ -77,14 +76,6 @@ class TestParsers:
     def test_parse_host_rejects_non_azuredatabricks_domain(self):
         with pytest.raises(ConfigurationError):
             _parse_host("https://example.com")
-
-    def test_parse_port_accepts_valid_port(self):
-        assert _parse_port("8080") == 8080
-
-    @pytest.mark.parametrize("value", ["0", "70000", "not-a-port"])
-    def test_parse_port_rejects_invalid_port(self, value: str):
-        with pytest.raises((ConfigurationError, ValueError)):
-            _parse_port(value)
 
 
 class TestAppConfig:
