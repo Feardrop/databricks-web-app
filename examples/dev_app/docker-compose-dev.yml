@@ -1,0 +1,23 @@
+services:
+
+  web-app-dev:
+    build: .
+    environment:
+      TZ: Europe/Berlin
+      LANG: en_US.UTF-8
+      SOLARA_APP_ENV: development
+      SECRETS_FILE: /run/secrets/.env-secrets
+      PYTHONUNBUFFERED: "1"
+    env_file:
+      - .env
+    secrets:
+      - .env-secrets
+    volumes:
+      - ./.env-secrets:/web-app/.env-secrets:ro
+      - ./.env-secrets:/run/secrets/.env-secrets:ro
+    ports:
+      - "8765:8765"
+
+secrets:
+  .env-secrets:
+    file: .env-secrets

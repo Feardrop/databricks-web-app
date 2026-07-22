@@ -1,0 +1,13 @@
+-r requirements.txt
+
+black
+build
+httpx
+isort
+mypy
+pip-tools
+pre-commit>=3.2
+pydoclint==0.0.8
+pydocstyle[toml]
+pytest
+ruff
