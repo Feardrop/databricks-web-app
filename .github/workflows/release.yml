@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.check.outputs.exists == 'false' }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,20 +86,44 @@ jobs:
     needs: release
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 0
 
-      - name: Merge main into develop
+      - name: Merge main into a sync branch
+        id: merge
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          if git merge --no-ff origin/main -m "chore: merge main into develop after release"; then
-            git push origin develop
+
+          branch="chore/sync-develop-after-${{ needs.release.outputs.tag }}"
+          git checkout -B "$branch"
+
+          if git merge --no-ff origin/main -m "chore: merge main into develop after ${{ needs.release.outputs.tag }}"; then
+            git push --force-with-lease origin "$branch"
+            echo "branch=$branch" >> "$GITHUB_OUTPUT"
           else
             echo "::error::Merging main into develop after the release produced conflicts. Resolve manually: git checkout develop && git merge main"
             exit 1
+          fi
+
+      - name: Open a PR to merge the sync branch into develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="${{ steps.merge.outputs.branch }}"
+          existing=$(gh pr list --base develop --head "$branch" --state open --json number --jq '.[0].number')
+
+          if [ -n "$existing" ]; then
+            echo "PR #$existing already open for $branch; nothing to do."
+          else
+            gh pr create --base develop --head "$branch" \
+              --title "chore: merge main into develop after ${{ needs.release.outputs.tag }}" \
+              --body "Automated merge-back after the ${{ needs.release.outputs.tag }} release, so the next \`release/vX.Y.Z\` branch cut from \`develop\` starts from the bumped version and trimmed changelog. Safe to merge once checks pass."
           fi
