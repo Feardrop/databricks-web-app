@@ -6,7 +6,35 @@ on:
   pull_request:
 
 jobs:
-  lint-and-test:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # The package (so mypy can resolve imports) plus the tools that the
+          # local pre-commit hooks invoke via `language: system`. ruff, black,
+          # and isort come from pre-commit's own pinned environments.
+          pip install -e .
+          pip install pre-commit mypy pydoclint==0.0.8 "pydocstyle[toml]"
+
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit (lint, format check, type check)
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,25 +51,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install black isort mypy pydoclint==0.0.8 "pydocstyle[toml]" pytest ruff httpx
-
-      - name: Ruff
-        run: ruff check .
-
-      - name: Black
-        run: black --check .
-
-      - name: isort
-        run: isort --check .
-
-      - name: mypy
-        run: mypy databricks_web_app
-
-      - name: pydoclint
-        run: pydoclint --config=pyproject.toml databricks_web_app
-
-      - name: pydocstyle
-        run: pydocstyle databricks_web_app
+          pip install pytest httpx
 
       - name: pytest
         run: pytest -m "not slow"

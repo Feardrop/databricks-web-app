@@ -30,9 +30,19 @@ the initial `0.0.1` release.
   package API.
 - README sections on reusing a connector via `DatabricksApp` and on deploying
   a consuming project (Docker/entrypoint/compose pattern).
-- GitHub Actions CI workflow running lint and tests.
+- GitHub Actions CI workflow: a `lint` job that runs `pre-commit run
+  --all-files` (single source of truth with local hooks) and a `test` job that
+  runs `pytest` across Python 3.10–3.12.
 - `pre-commit` hooks for `mypy` and the `pytest` suite (the latter on the
   `pre-push` stage), plus README instructions for installing both hook stages.
+- `.github/pull_request_template.md`.
+
+### Changed
+
+- CI now drives linting through `pre-commit` instead of invoking `ruff`,
+  `black`, and `isort` directly, so it can no longer drift from the versions
+  pinned in `.pre-commit-config.yaml` and now also runs the base hooks
+  (whitespace, YAML/JSON/TOML checks).
 
 ### Fixed
 
