@@ -1,6 +1,7 @@
 """Abstract class to build SQL queries sender."""
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from typing import Iterable
 
@@ -13,6 +14,30 @@ if TYPE_CHECKING:
     from databricks.sql.client import Connection
 
 log = logging.getLogger(__name__)
+
+_IDENTIFIER_PART = r"(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)"
+_IDENTIFIER_PATTERN = re.compile(
+    rf"^{_IDENTIFIER_PART}(?:\.{_IDENTIFIER_PART}){{0,2}}$"
+)
+
+
+def _validate_identifier(data_source: str) -> str:
+    """Validate that ``data_source`` looks like a trusted table identifier.
+
+    Accepts ``table``, ``schema.table``, or ``catalog.schema.table``, each
+    part either a plain SQL identifier or backtick-quoted. This rejects
+    obvious injection attempts (whitespace, quotes, statement separators)
+    before the value is interpolated into a query, but it is not a
+    substitute for treating ``data_source`` as trusted input.
+    """
+    if not _IDENTIFIER_PATTERN.match(data_source):
+        raise ValueError(
+            f"Invalid data_source identifier: {data_source!r}. Expected "
+            "'table', 'schema.table', or 'catalog.schema.table', each part "
+            "a valid SQL identifier optionally wrapped in backticks."
+        )
+
+    return data_source
 
 
 class AbstractHandler(ABC):
@@ -73,9 +98,23 @@ class AbstractHandler(ABC):
     def get_columns(
         self,
         data_source: str,
-        default_columns: Iterable = ("tag_db_alias",),
+        default_columns: Iterable,
     ) -> pd.DataFrame:
-        """Return column names for a data source."""
+        """Return column names for a data source.
+
+        Args:
+            data_source: Table identifier (``table``, ``schema.table``, or
+                ``catalog.schema.table``). Must be a trusted value -- it is
+                validated as identifier-shaped before being interpolated
+                into the query, but that is not a substitute for not
+                passing untrusted input here.
+            default_columns: Column name(s) for the returned DataFrame.
+
+        Returns:
+            A DataFrame with one row per column of ``data_source``, indexed
+            under ``default_columns``.
+        """
+        _validate_identifier(data_source)
         query = (
             f"SELECT * FROM {data_source} "
             "LIMIT 0 /* query get_columns_data_source */"

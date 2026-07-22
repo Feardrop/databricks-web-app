@@ -53,4 +53,7 @@ lockfile to compile first.
 
 Treat this directory as a template: copy it into a new repository, replace the
 package's own dependency with a released tag, and fill in your workspace's
-values.
+values. The port (`8765`), SSL certificate paths (`../ssl/...`), and
+`--root-path` in `entrypoint_command.sh` are this example's own values, not
+required ones — adjust them for your deployment (see the comment directly
+above them in that file).
