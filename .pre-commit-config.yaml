@@ -30,16 +30,36 @@ repos:
 
   - repo: local
     hooks:
+      # Docstring linters run on the package only; test methods conventionally
+      # do not carry docstrings. This mirrors the CI configuration.
       - id: pydoclint
         name: pydoclint
         entry: pydoclint --config=pyproject.toml
         language: system
-        files: ^(databricks_web_app|tests)/
+        files: ^databricks_web_app/
         types_or: [python, pyi]
 
       - id: pydocstyle
         name: pydocstyle
         entry: pydocstyle
         language: system
-        files: ^(databricks_web_app|tests)/
+        files: ^databricks_web_app/
         types_or: [python, pyi]
+
+      - id: mypy
+        name: mypy
+        entry: mypy databricks_web_app
+        language: system
+        pass_filenames: false
+        files: ^databricks_web_app/.*\.py$
+        types_or: [python, pyi]
+
+      # Full test suite. Runs on push (not on every commit) so commits stay
+      # fast; install with `pre-commit install --hook-type pre-push`.
+      - id: pytest
+        name: pytest
+        entry: pytest -m "not slow"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

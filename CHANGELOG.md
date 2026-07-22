@@ -31,6 +31,8 @@ the initial `0.0.1` release.
 - README sections on reusing a connector via `DatabricksApp` and on deploying
   a consuming project (Docker/entrypoint/compose pattern).
 - GitHub Actions CI workflow running lint and tests.
+- `pre-commit` hooks for `mypy` and the `pytest` suite (the latter on the
+  `pre-push` stage), plus README instructions for installing both hook stages.
 
 ### Fixed
 
@@ -43,5 +45,8 @@ the initial `0.0.1` release.
   `app.py`) so the new CI workflow passes.
 - Resolved a `pydocstyle` D105/D418 conflict on the `@overload`-decorated
   `ConfigAttribute.__get__` stubs that would have failed the new CI workflow.
+- Scoped the `pydoclint`/`pydocstyle` pre-commit hooks to `databricks_web_app/`
+  (matching CI); they previously also targeted `tests/`, where undocumented
+  test methods and `tests/__init__.py` made the hooks fail.
 
 [Unreleased]: https://github.com/feardrop/databricks-web-app/commits/main

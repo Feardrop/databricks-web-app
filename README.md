@@ -224,20 +224,30 @@ pip install pip-tools
 pip-compile requirements.in
 pip-compile requirements-dev.in
 pip install -r requirements-dev.txt
-pre-commit install
 ```
 
-Run the test suite and linters:
+### Pre-commit hooks
+
+Linting, type checking, and the test suite all run through
+[pre-commit](https://pre-commit.com/) (installed by the step above). Install
+both hook stages once per clone:
 
 ```bash
-pytest
-ruff check .
-black --check .
-isort --check .
-mypy .
-pydoclint --config=pyproject.toml databricks_web_app
-pydocstyle databricks_web_app
+pre-commit install                       # linters + formatters on `git commit`
+pre-commit install --hook-type pre-push  # full test suite on `git push`
 ```
+
+From then on the hooks run automatically. The commit stage runs the fast
+checks (ruff, black, isort, pydoclint, pydocstyle, mypy, plus whitespace/JSON/
+YAML/TOML checks); the push stage runs `pytest`. To run everything on demand:
+
+```bash
+pre-commit run --all-files                     # all commit-stage hooks
+pre-commit run --all-files --hook-stage pre-push  # add the pytest hook
+```
+
+The same tools can also be invoked directly, e.g. `pytest`, `ruff check .`,
+`black --check .`, `isort --check .`, `mypy databricks_web_app`.
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
 (see `conventionalcommit.json` for the accepted types).
