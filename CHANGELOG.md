@@ -35,7 +35,8 @@ the initial `0.0.1` release.
   runs `pytest` across Python 3.10–3.12.
 - `pre-commit` hooks for `mypy` and the `pytest` suite (the latter on the
   `pre-push` stage), plus README instructions for installing both hook stages.
-- `.github/pull_request_template.md`.
+- `.github/pull_request_template.md`, with a checklist of Keep a Changelog
+  categories (Added/Changed/Fixed/etc.) that a PR can check off multiple of.
 
 ### Changed
 

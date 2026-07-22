@@ -7,16 +7,19 @@ See conventionalcommit.json for the accepted types.
 
 <!-- What does this change do, and why? Link any related issue. -->
 
-## Type of change
+## Changelog-worthy changes
 
-<!-- Mark the one that best matches; keep a PR to a single type where possible. -->
+<!-- Check all that apply — a PR can span more than one category. These mirror
+     the sections in CHANGELOG.md; use them as a guide for what to add there. -->
 
-- [ ] `feat` — new feature
-- [ ] `fix` — bug fix
-- [ ] `docs` — documentation only
-- [ ] `refactor` — no behaviour change
-- [ ] `test` — tests only
-- [ ] `chore` / `build` / `ci` — tooling, deps, or pipeline
+- [ ] Added — new feature or capability
+- [ ] Changed — change in existing behaviour
+- [ ] Deprecated — soon-to-be-removed feature
+- [ ] Removed — removed feature or code
+- [ ] Fixed — bug fix
+- [ ] Security — vulnerability fix
+- [ ] None of the above (e.g. docs, tests, or internal tooling with no
+      user-facing effect)
 
 ## Checklist
 
