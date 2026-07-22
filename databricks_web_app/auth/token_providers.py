@@ -99,14 +99,14 @@ class UserTokenProvider(TokenProvider):
 
     def _acquire_token(self) -> str:
         """Retrieve user token from known sources."""
+        log.debug("Try retrieving token from in-memory dict.")
         try:
-            print("Try retrieving token from in-memory dict.")
             sid = solara.get_session_id()
             return TOKEN_BY_SESSION[sid]
         except Exception:  # pylint: disable=broad-exception-caught
-            print("Failed to retrieve access token from in-memory dict.")
+            log.debug("Failed to retrieve access token from in-memory dict.")
 
-        print("Fallback: Try retrieving access token from headers.")
+        log.debug("Fallback: Try retrieving access token from headers.")
         headers = solara_headers.value or {}  # type: ignore[attr-defined]
 
         return _require_access_token(headers)
@@ -114,8 +114,7 @@ class UserTokenProvider(TokenProvider):
     def _verify_token(self, token: str) -> str:
         """Verify JWT token."""
         if token.count(".") != 2:
-            if DEBUG:
-                print("Omit token verification as token is likely an opaque one.")
+            log.debug("Omit token verification as token is likely an opaque one.")
             return token
 
         # Get public key with which JWT is signed from IdP.
