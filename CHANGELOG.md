@@ -14,6 +14,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   context-manager protocol), even when the query raises. Previously every
   call opened a connection that was never closed, leaking warehouse
   sessions/sockets over a dashboard's lifetime. Fixes #5.
+- `_parse_databricks_token`'s error message said tokens must be 44
+  characters long; the actual (unchanged) pattern requires 38.
+- `connector.py` docstrings referenced a nonexistent `OAuthDatabricksConfig`
+  type instead of `AppConfig`, and had an "astract connector" typo.
+
+### Removed
+
+- `AppConfig._resolve_named_value` and `_parse_port`: both were unused dead
+  code (`_parse_port` wasn't wired to any config field). `connector.py`'s
+  unused `TypeVar` `T` was removed too. Part of #7.
+
+### Changed
+
+- Four `ConfigAttribute` "docstrings" in `AppConfig`
+  (`m2m_client_id`/`m2m_client_secret`, `*_proxy`) were f-strings used as
+  bare expression statements — not string literals, so no tooling ever
+  captured them as attribute docstrings. Converted to plain string
+  literals. Part of #7.
+- `AccessTokenUserHandler` and `AzureSPM2MOauthHandler` had identical,
+  uninformative docstrings; differentiated (user-token vs.
+  service-principal M2M). Part of #7.
 
 ## [0.0.1] - 2026-07-22
 
