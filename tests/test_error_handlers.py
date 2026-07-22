@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+from urllib.parse import quote
 
 from databricks_web_app import AppConfig
 from databricks_web_app.error_handlers.authentication import (
@@ -15,6 +17,7 @@ from databricks_web_app.error_handlers.components import (
     ErrorDetail,
     RichErrorDialogBase,
     RichErrorDialogConfig,
+    _get_mailto_link,
     _resolve_palette,
 )
 from databricks_web_app.error_handlers.databricks import (
@@ -177,6 +180,8 @@ class TestRedactTracebackInProduction:
             redacted = handler._redact_traceback_in_production(config)
 
         assert redacted.traceback_text is None
+        assert redacted.traceback_redacted is True
+        assert redacted.occurred_at is not None
         assert "Traceback: boom" in caplog.text
 
     def test_keeps_traceback_in_development(self, valid_environ: dict[str, str]):
@@ -194,6 +199,8 @@ class TestRedactTracebackInProduction:
         redacted = handler._redact_traceback_in_production(config)
 
         assert redacted.traceback_text == "Traceback: boom"
+        assert redacted.traceback_redacted is False
+        assert redacted.occurred_at is not None
 
     def test_noop_when_no_traceback(self, app_config: AppConfig):
         handler = GenericApplicationErrorDialog(app_config)
@@ -251,3 +258,59 @@ class TestThemeAwareHtml:
 
         assert _DARK_PALETTE.code_bg in traceback_html
         assert _LIGHT_PALETTE.code_bg not in traceback_html
+
+
+class TestGetMailtoLink:
+    """Tests for _get_mailto_link, including the redacted-traceback case."""
+
+    def _config_with_contact_email(self, valid_environ: dict[str, str]) -> AppConfig:
+        environ = make_environ(valid_environ, CONTACT_EMAIL="dev@example.com")
+        return AppConfig(environ=environ)
+
+    def test_returns_none_without_contact_email(self, app_config: AppConfig):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        assert _get_mailto_link(config, app_config) is None
+
+    def test_includes_full_traceback_when_present(self, valid_environ: dict[str, str]):
+        config_with_contact = self._config_with_contact_email(valid_environ)
+        dialog_config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert "Traceback%3A%20boom" in link
+
+    def test_points_to_server_logs_when_traceback_redacted(
+        self, valid_environ: dict[str, str]
+    ):
+        config_with_contact = self._config_with_contact_email(valid_environ)
+        occurred_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        dialog_config = RichErrorDialogConfig(
+            title="t",
+            description="d",
+            traceback_text=None,
+            occurred_at=occurred_at,
+            traceback_redacted=True,
+        )
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert "logged%20server-side" in link
+        # The timestamp used in the subject and body must match, so the
+        # developer can correlate the email with the server-side log entry.
+        assert link.count(quote("2026-01-02T03:04:05+00:00")) == 2
+
+    def test_no_traceback_available_when_never_captured(
+        self, valid_environ: dict[str, str]
+    ):
+        config_with_contact = self._config_with_contact_email(valid_environ)
+        dialog_config = RichErrorDialogConfig(title="t", description="d")
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert "No%20traceback%20available." in link

@@ -93,6 +93,8 @@ class RichErrorDialogConfig:
     traceback_text: Optional[str] = None
     on_close: Optional[Callable[[], None]] = None
     force_page_reload: bool = False
+    occurred_at: Optional[datetime] = None
+    traceback_redacted: bool = False
 
     def __post_init__(self) -> None:
         """Validate dependent instruction fields."""
@@ -172,16 +174,21 @@ class RichErrorDialogBase(ABC):
         if dialog_config.traceback_text is None:
             return dialog_config
 
+        occurred_at = datetime.now(timezone.utc)
+
         log.error(
-            "Unhandled error rendered by %s:\n%s",
+            "Unhandled error [%s] rendered by %s:\n%s",
+            occurred_at.isoformat(timespec="seconds"),
             type(self).__name__,
             dialog_config.traceback_text,
         )
 
+        dialog_config = replace(dialog_config, occurred_at=occurred_at)
+
         if self.app_config.is_development:
             return dialog_config
 
-        return replace(dialog_config, traceback_text=None)
+        return replace(dialog_config, traceback_text=None, traceback_redacted=True)
 
     @staticmethod
     def format_traceback(exception: BaseException) -> str:
@@ -377,6 +384,24 @@ class RichErrorDialogBase(ABC):
         """
 
 
+def _traceback_section_text(
+    dialog_config: RichErrorDialogConfig, timestamp: str
+) -> str:
+    """Build the "Complete error details" section of the mailto body."""
+    if dialog_config.traceback_text:
+        return dialog_config.traceback_text
+
+    if dialog_config.traceback_redacted:
+        return (
+            "The complete error details were logged server-side but are not "
+            "included here. Please give the developers this email's "
+            f"timestamp ({timestamp}) so they can find the corresponding "
+            "log entry."
+        )
+
+    return "No traceback available."
+
+
 def _get_mailto_link(
     dialog_config: RichErrorDialogConfig, app_config: AppConfig
 ) -> Optional[str]:
@@ -385,15 +410,15 @@ def _get_mailto_link(
         log.error("No contact email configured for error dialog.")
         return None
 
-    subject = (
-        f"[{app_config.project_name}] {dialog_config.title} "
-        f"({datetime.isoformat(datetime.now(timezone.utc), timespec='seconds')})"
+    timestamp = datetime.isoformat(
+        dialog_config.occurred_at or datetime.now(timezone.utc), timespec="seconds"
     )
+    subject = f"[{app_config.project_name}] {dialog_config.title} ({timestamp})"
     body = (
         f"{dialog_config.title}\n\n"
         f"{dialog_config.description}\n\n"
         "Complete error details:\n"
-        f"{dialog_config.traceback_text or 'No traceback available.'}"
+        f"{_traceback_section_text(dialog_config, timestamp)}"
     )
 
     return (

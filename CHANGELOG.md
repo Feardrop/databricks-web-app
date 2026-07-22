@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outside of `SOLARA_APP_ENV=development`. The traceback is always logged
   server-side first, so operators keep full detail while production users
   see only the dialog's summary. Part of #9.
+- The "Contact developers" mailto link's body now tells the recipient that
+  the complete error details were logged server-side (rather than silently
+  showing "No traceback available.") and includes the exact timestamp used
+  in both the email subject and the server-side log entry, so a contacted
+  developer can find the corresponding log line. Part of #9.
 
 ### Changed
 
