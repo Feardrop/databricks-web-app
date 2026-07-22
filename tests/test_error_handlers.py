@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from databricks_web_app import AppConfig
 from databricks_web_app.error_handlers.authentication import (
     ClientSecretExpiredErrorDialog,
@@ -17,6 +19,8 @@ from databricks_web_app.error_handlers.generic import GenericApplicationErrorDia
 import jwt
 import pytest
 import requests
+
+from .conftest import make_environ
 
 
 class TestRichErrorDialogConfig:
@@ -149,3 +153,45 @@ class TestGenericApplicationErrorDialog:
             detail.label == "Missing key or column" and detail.value == "missing_column"
             for detail in dialog_config.details
         )
+
+
+class TestRedactTracebackInProduction:
+    """Tests for RichErrorDialogBase._redact_traceback_in_production."""
+
+    def test_redacts_traceback_in_production(
+        self, app_config: AppConfig, caplog: pytest.LogCaptureFixture
+    ):
+        handler = GenericApplicationErrorDialog(app_config)
+        config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        with caplog.at_level(logging.ERROR):
+            redacted = handler._redact_traceback_in_production(config)
+
+        assert redacted.traceback_text is None
+        assert "Traceback: boom" in caplog.text
+
+    def test_keeps_traceback_in_development(self, valid_environ: dict[str, str]):
+        environ = make_environ(
+            valid_environ,
+            SOLARA_APP_ENV="development",
+            DATABRICKS_TOKEN="dapi" + "a" * 32 + "-2",
+        )
+        dev_config = AppConfig(environ=environ)
+        handler = GenericApplicationErrorDialog(dev_config)
+        config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        redacted = handler._redact_traceback_in_production(config)
+
+        assert redacted.traceback_text == "Traceback: boom"
+
+    def test_noop_when_no_traceback(self, app_config: AppConfig):
+        handler = GenericApplicationErrorDialog(app_config)
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        redacted = handler._redact_traceback_in_production(config)
+
+        assert redacted is config

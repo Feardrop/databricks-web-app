@@ -95,6 +95,7 @@ class RichErrorDialogBase(ABC):
             exception=exception,
             on_close=lambda: on_close(self),
         )
+        dialog_config = self._redact_traceback_in_production(dialog_config)
 
         if not self.clear_exception_on_close:
             dialog_config = replace(
@@ -108,6 +109,31 @@ class RichErrorDialogBase(ABC):
             max_width=self.max_width,
         )
         return True
+
+    def _redact_traceback_in_production(
+        self,
+        dialog_config: RichErrorDialogConfig,
+    ) -> RichErrorDialogConfig:
+        """Log the traceback server-side, then hide it outside development.
+
+        End users should not see raw Python tracebacks (internal paths,
+        dependency versions, query/schema details) in production, but
+        operators still need them -- so they're always logged here first,
+        regardless of what ends up in the rendered dialog.
+        """
+        if dialog_config.traceback_text is None:
+            return dialog_config
+
+        log.error(
+            "Unhandled error rendered by %s:\n%s",
+            type(self).__name__,
+            dialog_config.traceback_text,
+        )
+
+        if self.app_config.is_development:
+            return dialog_config
+
+        return replace(dialog_config, traceback_text=None)
 
     @staticmethod
     def format_traceback(exception: BaseException) -> str:
