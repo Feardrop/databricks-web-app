@@ -1,5 +1,7 @@
 """This module contains Databricks SQL access classes."""
 
+import logging
+
 from databricks import sql
 from databricks.sql.auth.common import AuthType
 from typing_extensions import TYPE_CHECKING
@@ -9,6 +11,8 @@ from .abstract import AbstractHandler
 
 if TYPE_CHECKING:
     from databricks.sql.client import Connection
+
+log = logging.getLogger(__name__)
 
 
 class AccessTokenUserHandler(AbstractHandler):
@@ -23,7 +27,7 @@ class AccessTokenUserHandler(AbstractHandler):
         if self.config.is_development:
             token = self.config.databricks_token
             assert token, "DATABRICKS_TOKEN not found in .env-secrets"
-            print("Using DATABRICKS_TOKEN for development")
+            log.debug("Using DATABRICKS_TOKEN for development")
         else:
             token = UserTokenProvider(self.config).get_token()
 

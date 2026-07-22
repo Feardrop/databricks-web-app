@@ -362,7 +362,6 @@ class AppConfig:
         self._load_declared_values(self._secrets, "secrets file")
         self._load_declared_values(self._environ, "environment")
         self._load_keyword_arguments(kwargs)
-        self._set_logger()
         self._validate()
         self._resolve_indirect_credentials()
 
@@ -482,11 +481,11 @@ class AppConfig:
 
         if not path.is_file():
             msg = f"{SECRETS_FILE} does not exist or is not a file: {path!s}"
-            logging.error(msg) if not self.is_development else logging.debug(msg)
+            logger.error(msg) if not self.is_development else logger.debug(msg)
             try:
                 find_dotenv(path.parts[-1], raise_error_if_not_found=True)
             except IOError as error:
-                logging.error(f"Could not find {path.parts[-1]} file: {error}")
+                logger.error(f"Could not find {path.parts[-1]} file: {error}")
 
         loaded_values = dotenv_values(path)
 
@@ -626,14 +625,6 @@ class AppConfig:
 
         if self.is_development and not self.databricks_token:
             raise ConfigurationError("DATABRICKS_TOKEN is required in development.")
-
-    def _set_logger(self):
-        if self.is_development:
-            logging.basicConfig(
-                level=os.environ.get("LOG_LEVEL", logging.INFO),
-                format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-                force=True,  # Python >= 3.8
-            )
 
     def __repr__(self) -> str:
         """Represents the string representation of an object for debugging purposes.
