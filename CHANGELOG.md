@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
+  close the Databricks SQL connection they open (via the connection's
+  context-manager protocol), even when the query raises. Previously every
+  call opened a connection that was never closed, leaking warehouse
+  sessions/sockets over a dashboard's lifetime. Fixes #5.
+
 ## [0.0.1] - 2026-07-22
 
 ### Added

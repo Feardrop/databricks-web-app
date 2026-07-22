@@ -37,16 +37,14 @@ class AbstractHandler(ABC):
         arrow: bool = True,
     ) -> pd.DataFrame:
         """Fetch query result via user authentication."""
-        return self.get_dataframe(
-            statement,
-            self.get_connection(),
-            arrow,
-        )
+        with self.get_connection() as connection:
+            return self.get_dataframe(statement, connection, arrow)
 
     def exec_statement(self, statement: str) -> None:
         """Execute a statement via user authentication."""
-        with self.get_connection().cursor() as cursor:
-            cursor.execute(statement)
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(statement)
 
     @staticmethod
     def get_dataframe(
@@ -83,17 +81,16 @@ class AbstractHandler(ABC):
             "LIMIT 0 /* query get_columns_data_source */"
         )
 
-        connection = self.get_connection()
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
 
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-
-            # noinspection PyTypeChecker
-            column_names = (
-                [desc[0] for desc in cursor.description]
-                if cursor.description is not None
-                else []
-            )
+                # noinspection PyTypeChecker
+                column_names = (
+                    [desc[0] for desc in cursor.description]
+                    if cursor.description is not None
+                    else []
+                )
 
         return pd.DataFrame(
             column_names,
