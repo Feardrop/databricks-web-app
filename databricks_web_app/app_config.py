@@ -161,7 +161,7 @@ def _parse_databricks_token(value: Any) -> str:
     if not re.match(r"^dapi[a-z0-9]{32}-2$", result):
         raise ConfigurationError(
             "Invalid Databricks token. "
-            "Must start with 'dapi' and end with '-2' and be 44 characters long."
+            "Must start with 'dapi' and end with '-2' and be 38 characters long."
         )
 
     return result
@@ -199,16 +199,6 @@ def _parse_valid_file_path(value: Any) -> Path:
     result = _parse_nonempty_string(value)
 
     return Path(result).expanduser()
-
-
-def _parse_port(value: Any) -> int:
-    """Parse a valid TCP port number."""
-    result = int(value)
-
-    if not 1 <= result <= 65535:
-        raise ConfigurationError("Port must be between 1 and 65535.")
-
-    return result
 
 
 def _parse_url(value: Any) -> str:
@@ -268,27 +258,27 @@ class AppConfig:
         env=AZURE_CLIENT_ID_PROXY,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Proxy name of the environment variable containing the Client ID of the
-    application for M2M authentication. Set either this or {AZURE_CLIENT_ID}.
+    application for M2M authentication. Set either this or AZURE_CLIENT_ID.
     """
 
     m2m_client_secret_proxy = ConfigAttribute(
         env=AZURE_CLIENT_SECRET_PROXY,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Proxy name of the environment variable containing the Client secret of the
-    application for M2M authentication. Set either this or {AZURE_CLIENT_SECRET}.
+    application for M2M authentication. Set either this or AZURE_CLIENT_SECRET.
     """
 
     m2m_client_id = ConfigAttribute(
         env=AZURE_CLIENT_ID,
         transform=_parse_uuid,
     )
-    f"""
+    """
     Client ID of the primary Azure application for M2M authentication.
-    Set either this or {AZURE_CLIENT_ID_PROXY}.
+    Set either this or AZURE_CLIENT_ID_PROXY.
     """
 
     m2m_client_secret = ConfigAttribute(
@@ -296,9 +286,9 @@ class AppConfig:
         sensitive=True,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Client secret of the primary Azure application for M2M authentication.
-    Set either this or {AZURE_CLIENT_SECRET_PROXY}.
+    Set either this or AZURE_CLIENT_SECRET_PROXY.
     """
 
     data_access_management_url = ConfigAttribute(
@@ -619,20 +609,6 @@ class AppConfig:
                 f"{AZURE_CLIENT_SECRET_PROXY} to reference another "
                 "variable."
             )
-
-    def _resolve_named_value(self, name: str) -> str:
-        """Resolve a named value using normal source precedence."""
-        environment_value = self._environ.get(name)
-
-        if environment_value:
-            return environment_value
-
-        secret_value = self._secrets.get(name)
-
-        if secret_value:
-            return secret_value
-
-        raise ConfigurationError(f"Missing required configuration field: {name}")
 
     def _validate(self) -> None:
         """Validate required and environment-specific values."""
