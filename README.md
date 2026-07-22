@@ -40,8 +40,9 @@ dependencies = [
 ]
 ```
 
-Pin to a tag or commit SHA instead of `@main` for reproducible installs, e.g.
-`@v0.0.1` or `@6b81d89`.
+Pin to a commit SHA instead of `@main` for reproducible installs, e.g.
+`@6b81d89`. Once a tagged release exists, pin to that tag instead (e.g.
+`@v0.0.1`).
 
 ## Configuration
 

@@ -5,10 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Nothing has been released yet; everything below is still unreleased, pending
+the initial `0.0.1` release.
+
 ## [Unreleased]
 
 ### Added
 
+- `databricks_web_app` package: `AppConfig`, `DatabricksApp`/`get_server_app`,
+  `AbstractConnector`/`DatabricksUserAndM2MConnector`, Databricks SQL
+  handlers, OAuth token providers, and Solara error-boundary components.
+- Project tooling: `pyproject.toml`, `pylintrc`, `.pre-commit-config.yaml`,
+  `conventionalcommit.json`, `requirements.in`/`requirements-dev.in`.
 - `README.md` with installation, configuration, and usage documentation.
 - `LICENSE` (MIT).
 - `py.typed` marker so consumers' type checkers pick up inline type hints.
@@ -33,16 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   narrowing gap in `auth/token_providers.py` and a documented type-ignore for
   the `AbstractConnector`/concrete-connector `__init__` signature mismatch in
   `app.py`) so the new CI workflow passes.
+- Resolved a `pydocstyle` D105/D418 conflict on the `@overload`-decorated
+  `ConfigAttribute.__get__` stubs that would have failed the new CI workflow.
 
-## [0.0.1] - Initial project setup
-
-### Added
-
-- `databricks_web_app` package: `AppConfig`, `DatabricksApp`/`get_server_app`,
-  `AbstractConnector`/`DatabricksUserAndM2MConnector`, Databricks SQL
-  handlers, OAuth token providers, and Solara error-boundary components.
-- Project tooling: `pyproject.toml`, `pylintrc`, `.pre-commit-config.yaml`,
-  `conventionalcommit.json`, `requirements.in`/`requirements-dev.in`.
-
-[Unreleased]: https://github.com/feardrop/databricks-web-app/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/feardrop/databricks-web-app/releases/tag/v0.0.1
+[Unreleased]: https://github.com/feardrop/databricks-web-app/commits/main
