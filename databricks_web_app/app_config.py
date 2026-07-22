@@ -258,27 +258,27 @@ class AppConfig:
         env=AZURE_CLIENT_ID_PROXY,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Proxy name of the environment variable containing the Client ID of the
-    application for M2M authentication. Set either this or {AZURE_CLIENT_ID}.
+    application for M2M authentication. Set either this or AZURE_CLIENT_ID.
     """
 
     m2m_client_secret_proxy = ConfigAttribute(
         env=AZURE_CLIENT_SECRET_PROXY,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Proxy name of the environment variable containing the Client secret of the
-    application for M2M authentication. Set either this or {AZURE_CLIENT_SECRET}.
+    application for M2M authentication. Set either this or AZURE_CLIENT_SECRET.
     """
 
     m2m_client_id = ConfigAttribute(
         env=AZURE_CLIENT_ID,
         transform=_parse_uuid,
     )
-    f"""
+    """
     Client ID of the primary Azure application for M2M authentication.
-    Set either this or {AZURE_CLIENT_ID_PROXY}.
+    Set either this or AZURE_CLIENT_ID_PROXY.
     """
 
     m2m_client_secret = ConfigAttribute(
@@ -286,9 +286,9 @@ class AppConfig:
         sensitive=True,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Client secret of the primary Azure application for M2M authentication.
-    Set either this or {AZURE_CLIENT_SECRET_PROXY}.
+    Set either this or AZURE_CLIENT_SECRET_PROXY.
     """
 
     data_access_management_url = ConfigAttribute(
