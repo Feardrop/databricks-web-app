@@ -9,6 +9,7 @@ from databricks_web_app.app_config import (
     _parse_email,
     _parse_environment,
     _parse_host,
+    _parse_host_suffixes,
     _parse_uuid,
     _parse_warehouse_id,
 )
@@ -73,9 +74,23 @@ class TestParsers:
         host = "https://adb-1234567890123456.1.azuredatabricks.net"
         assert _parse_host(host) == host
 
-    def test_parse_host_rejects_non_azuredatabricks_domain(self):
+    def test_parse_host_only_validates_url_shape(self):
+        """_parse_host no longer checks the domain; AppConfig._validate does."""
+        assert _parse_host("https://example.com") == "https://example.com"
+
+    def test_parse_host_rejects_malformed_url(self):
         with pytest.raises(ConfigurationError):
-            _parse_host("https://example.com")
+            _parse_host("not-a-url")
+
+    def test_parse_host_suffixes_splits_and_strips(self):
+        assert _parse_host_suffixes(" .foo.com, .bar.com ,") == (
+            ".foo.com",
+            ".bar.com",
+        )
+
+    def test_parse_host_suffixes_rejects_empty(self):
+        with pytest.raises(ConfigurationError):
+            _parse_host_suffixes(" , ,")
 
 
 class TestAppConfig:
@@ -102,6 +117,40 @@ class TestAppConfig:
 
         with pytest.raises(ConfigurationError):
             AppConfig(environ=environ)
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "https://adb-1234567890123456.1.azuredatabricks.net",
+            "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com",
+            "https://1234567890123456.7.gcp.databricks.com",
+        ],
+    )
+    def test_accepts_known_databricks_cloud_hosts(
+        self, valid_environ: dict[str, str], host: str
+    ):
+        environ = make_environ(valid_environ, DATABRICKS_HOST=host)
+
+        config = AppConfig(environ=environ)
+
+        assert config.databricks_host == host
+
+    def test_rejects_non_databricks_host(self, valid_environ: dict[str, str]):
+        environ = make_environ(valid_environ, DATABRICKS_HOST="https://example.com")
+
+        with pytest.raises(ConfigurationError):
+            AppConfig(environ=environ)
+
+    def test_databricks_host_suffixes_overridable(self, valid_environ: dict[str, str]):
+        environ = make_environ(
+            valid_environ,
+            DATABRICKS_HOST="https://example.internal-databricks.corp",
+            DATABRICKS_HOST_SUFFIXES=".internal-databricks.corp",
+        )
+
+        config = AppConfig(environ=environ)
+
+        assert config.databricks_host_suffixes == (".internal-databricks.corp",)
 
     def test_development_requires_databricks_token(self, valid_environ: dict[str, str]):
         environ = make_environ(valid_environ, SOLARA_APP_ENV="development")

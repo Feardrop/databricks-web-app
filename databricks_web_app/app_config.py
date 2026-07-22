@@ -15,8 +15,18 @@ SOLARA_APP_ENV = "SOLARA_APP_ENV"
 SECRETS_FILE = "SECRETS_FILE"
 
 DATABRICKS_HOST = "DATABRICKS_HOST"
+DATABRICKS_HOST_SUFFIXES = "DATABRICKS_HOST_SUFFIXES"
 DATABRICKS_TOKEN = "DATABRICKS_TOKEN"
 DATABRICKS_WAREHOUSE_ID = "DATABRICKS_WAREHOUSE_ID"
+
+# Databricks' own documented workspace URL suffixes for its three supported
+# clouds. Azure-only was a hardcoded assumption left over from this package's
+# original single-cloud consumer; AWS/GCP workspaces are equally valid.
+DEFAULT_DATABRICKS_HOST_SUFFIXES = (
+    ".azuredatabricks.net",
+    ".cloud.databricks.com",
+    ".gcp.databricks.com",
+)
 
 AZURE_CLIENT_ID = "AZURE_CLIENT_ID"
 AZURE_CLIENT_ID_PROXY = "AZURE_CLIENT_ID_PROXY"
@@ -26,6 +36,7 @@ AZURE_CLIENT_SECRET_PROXY = "AZURE_CLIENT_SECRET_PROXY"
 DATA_ACCESS_PACKAGES_URL = "DATA_ACCESS_PACKAGES_URL"
 DATA_ACCESS_MANAGEMENT_PAGE_URL = "DATA_ACCESS_MANAGEMENT_URL"
 AZURE_TENANT_ID = "AZURE_TENANT_ID"
+DATABRICKS_TOKEN_AUDIENCE = "DATABRICKS_TOKEN_AUDIENCE"
 
 logger = logging.getLogger(__name__)
 
@@ -211,15 +222,25 @@ def _parse_url(value: Any) -> str:
 
 
 def _parse_host(value: Any) -> str:
-    """Normalize a Databricks workspace URL."""
-    result = _parse_url(value).rstrip("/")
+    """Normalize a Databricks workspace URL.
 
-    if not result.endswith(".azuredatabricks.net"):
-        raise ConfigurationError(
-            f"{DATABRICKS_HOST} must match 'https://<workspace>.azuredatabricks.net'."
-        )
+    Only checks that ``value`` is a well-formed URL. Whether it's a
+    recognized Databricks host is checked separately in
+    ``AppConfig._validate`` against ``databricks_host_suffixes``, since that
+    list is itself configurable and this is a stateless transform function.
+    """
+    return _parse_url(value).rstrip("/")
 
-    return result
+
+def _parse_host_suffixes(value: Any) -> tuple[str, ...]:
+    """Parse a comma-separated list of accepted Databricks host suffixes."""
+    raw = _parse_nonempty_string(value)
+    suffixes = tuple(suffix.strip() for suffix in raw.split(",") if suffix.strip())
+
+    if not suffixes:
+        raise ConfigurationError("At least one host suffix must be provided.")
+
+    return suffixes
 
 
 class AppConfig:
@@ -253,6 +274,17 @@ class AppConfig:
         transform=_parse_nonempty_string,
     )
     """Microsoft Entra ID tenant identifier. Can be omitted."""
+
+    databricks_token_audience = ConfigAttribute(
+        env=DATABRICKS_TOKEN_AUDIENCE,
+        transform=_parse_nonempty_string,
+    )
+    """
+    Expected audience claim when verifying a user's Databricks access token.
+    Defaults to Databricks' public-cloud production app ID
+    (`databricks.sql.auth.common.AzureAppId.PROD`) if omitted; override for a
+    non-production or sovereign-cloud Databricks/Entra deployment.
+    """
 
     m2m_client_id_proxy = ConfigAttribute(
         env=AZURE_CLIENT_ID_PROXY,
@@ -309,6 +341,16 @@ class AppConfig:
         transform=_parse_host,
     )
     """Databricks workspace host URL."""
+
+    databricks_host_suffixes = ConfigAttribute(
+        env=DATABRICKS_HOST_SUFFIXES,
+        transform=_parse_host_suffixes,
+    )
+    """
+    Comma-separated list of accepted Databricks workspace host suffixes.
+    Defaults to the documented Azure/AWS/GCP Databricks suffixes; override to
+    allow a private-link or otherwise non-standard workspace domain.
+    """
 
     databricks_warehouse_id = ConfigAttribute(
         env=DATABRICKS_WAREHOUSE_ID,
@@ -449,6 +491,7 @@ class AppConfig:
         """Set defaults that are not organization-specific."""
         defaults = {
             "solara_app_env": "production",
+            "databricks_host_suffixes": ",".join(DEFAULT_DATABRICKS_HOST_SUFFIXES),
         }
 
         for name, value in defaults.items():
@@ -621,6 +664,16 @@ class AppConfig:
             names = ", ".join(sorted(missing))
             raise ConfigurationError(
                 f"Missing required configuration field(s): {names}"
+            )
+
+        if self.databricks_host and not any(
+            self.databricks_host.endswith(suffix)
+            for suffix in self.databricks_host_suffixes or ()
+        ):
+            allowed = ", ".join(self.databricks_host_suffixes or ())
+            raise ConfigurationError(
+                f"{DATABRICKS_HOST} must end with one of: {allowed}. "
+                f"Configure {DATABRICKS_HOST_SUFFIXES} to allow another domain."
             )
 
         if self.is_development and not self.databricks_token:

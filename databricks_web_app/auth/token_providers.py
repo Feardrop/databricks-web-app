@@ -118,13 +118,15 @@ class UserTokenProvider(TokenProvider):
         # Get public key with which JWT is signed from IdP.
         signing_key = self._jwks_client.get_signing_key_from_jwt(token)
 
+        audience = self.config.databricks_token_audience or AzureAppId.PROD.value[1]
+
         try:
             jwt.decode(
                 token,
                 key=signing_key.key,
                 # Entra always signs tokens with RS256 (RSA + SHA-256)
                 algorithms=["RS256"],
-                audience=AzureAppId.PROD.value[1],
+                audience=audience,
                 # The token version (v1 or v2) is determined by the requested resource (Databricks),
                 # not the endpoint from which the token is retrieved (Entra).
                 # _issuer=f"https://login.microsoftonline.com/{azure_tenant_id}/v2.0"
