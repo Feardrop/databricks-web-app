@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_server_app`'s docstring, port/root-path in
   `examples/dev_app/entrypoint_command.sh`) more clearly as placeholders to
   adjust, not required values. Part of #8.
+- Rich error dialogs now use a theme-aware color palette and switch between
+  light and dark colors based on Solara's effective theme
+  (`solara.lab.use_dark_effective()`), instead of hardcoding light-only
+  colors. Part of #9.
 
 ### Removed
 
@@ -75,6 +79,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `UserTokenProvider._verify_token` no longer prints the raw bearer token or
   decoded JWT claims to stdout under its (now-removed) `DEBUG` flag. Fixes #4.
+- Rich error dialogs no longer render raw Python tracebacks to end users
+  outside of `SOLARA_APP_ENV=development`. The traceback is always logged
+  server-side first, so operators keep full detail while production users
+  see only the dialog's summary. Part of #9.
+- The "Contact developers" mailto link's body now tells the recipient that
+  the complete error details were logged server-side (rather than silently
+  showing "No traceback available.") and includes the exact timestamp used
+  in both the email subject and the server-side log entry, so a contacted
+  developer can find the corresponding log line. Part of #9.
 
 ## [0.0.1] - 2026-07-22
 

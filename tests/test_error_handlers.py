@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timezone
+from urllib.parse import quote
+
 from databricks_web_app import AppConfig
 from databricks_web_app.error_handlers.authentication import (
     ClientSecretExpiredErrorDialog,
     TokenExpiredErrorDialog,
 )
-from databricks_web_app.error_handlers.components import RichErrorDialogConfig
+from databricks_web_app.error_handlers.components import (
+    _DARK_PALETTE,
+    _LIGHT_PALETTE,
+    ErrorDetail,
+    RichErrorDialogBase,
+    RichErrorDialogConfig,
+    _get_mailto_link,
+    _resolve_palette,
+)
 from databricks_web_app.error_handlers.databricks import (
     DatabricksInvalidAccessTokenErrorDialog,
     DatabricksPermissionErrorDialog,
@@ -17,6 +29,8 @@ from databricks_web_app.error_handlers.generic import GenericApplicationErrorDia
 import jwt
 import pytest
 import requests
+
+from .conftest import make_environ
 
 
 class TestRichErrorDialogConfig:
@@ -149,3 +163,154 @@ class TestGenericApplicationErrorDialog:
             detail.label == "Missing key or column" and detail.value == "missing_column"
             for detail in dialog_config.details
         )
+
+
+class TestRedactTracebackInProduction:
+    """Tests for RichErrorDialogBase._redact_traceback_in_production."""
+
+    def test_redacts_traceback_in_production(
+        self, app_config: AppConfig, caplog: pytest.LogCaptureFixture
+    ):
+        handler = GenericApplicationErrorDialog(app_config)
+        config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        with caplog.at_level(logging.ERROR):
+            redacted = handler._redact_traceback_in_production(config)
+
+        assert redacted.traceback_text is None
+        assert redacted.traceback_redacted is True
+        assert redacted.occurred_at is not None
+        assert "Traceback: boom" in caplog.text
+
+    def test_keeps_traceback_in_development(self, valid_environ: dict[str, str]):
+        environ = make_environ(
+            valid_environ,
+            SOLARA_APP_ENV="development",
+            DATABRICKS_TOKEN="dapi" + "a" * 32 + "-2",
+        )
+        dev_config = AppConfig(environ=environ)
+        handler = GenericApplicationErrorDialog(dev_config)
+        config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        redacted = handler._redact_traceback_in_production(config)
+
+        assert redacted.traceback_text == "Traceback: boom"
+        assert redacted.traceback_redacted is False
+        assert redacted.occurred_at is not None
+
+    def test_noop_when_no_traceback(self, app_config: AppConfig):
+        handler = GenericApplicationErrorDialog(app_config)
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        redacted = handler._redact_traceback_in_production(config)
+
+        assert redacted is config
+
+
+class TestResolvePalette:
+    """Tests for the light/dark color palette resolution."""
+
+    def test_light_by_default(self):
+        assert _resolve_palette(False) is _LIGHT_PALETTE
+
+    def test_dark_when_requested(self):
+        assert _resolve_palette(True) is _DARK_PALETTE
+
+    def test_light_and_dark_palettes_differ(self):
+        assert _LIGHT_PALETTE != _DARK_PALETTE
+
+
+class TestThemeAwareHtml:
+    """Tests that dialog HTML reflects the requested theme's colors."""
+
+    def test_body_html_uses_light_colors_by_default(self):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        body = RichErrorDialogBase.body_html(config)
+
+        assert _LIGHT_PALETTE.body_text in body
+        assert _DARK_PALETTE.body_text not in body
+
+    def test_body_html_uses_dark_colors_when_requested(self):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        body = RichErrorDialogBase.body_html(config, dark=True)
+
+        assert _DARK_PALETTE.body_text in body
+        assert _LIGHT_PALETTE.body_text not in body
+
+    def test_details_section_uses_dark_colors_when_requested(self):
+        details = [ErrorDetail(label="Table", value="main.default.foo")]
+
+        details_html = RichErrorDialogBase._details_section_html(details, dark=True)
+
+        assert _DARK_PALETTE.details_bg in details_html
+        assert _LIGHT_PALETTE.details_bg not in details_html
+
+    def test_traceback_section_uses_dark_colors_when_requested(self):
+        traceback_html = RichErrorDialogBase._traceback_section_html(
+            "Traceback: boom", dark=True
+        )
+
+        assert _DARK_PALETTE.code_bg in traceback_html
+        assert _LIGHT_PALETTE.code_bg not in traceback_html
+
+
+class TestGetMailtoLink:
+    """Tests for _get_mailto_link, including the redacted-traceback case."""
+
+    def _config_with_contact_email(self, valid_environ: dict[str, str]) -> AppConfig:
+        environ = make_environ(valid_environ, CONTACT_EMAIL="dev@example.com")
+        return AppConfig(environ=environ)
+
+    def test_returns_none_without_contact_email(self, app_config: AppConfig):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        assert _get_mailto_link(config, app_config) is None
+
+    def test_includes_full_traceback_when_present(self, valid_environ: dict[str, str]):
+        config_with_contact = self._config_with_contact_email(valid_environ)
+        dialog_config = RichErrorDialogConfig(
+            title="t", description="d", traceback_text="Traceback: boom"
+        )
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert "Traceback%3A%20boom" in link
+
+    def test_points_to_server_logs_when_traceback_redacted(
+        self, valid_environ: dict[str, str]
+    ):
+        config_with_contact = self._config_with_contact_email(valid_environ)
+        occurred_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        dialog_config = RichErrorDialogConfig(
+            title="t",
+            description="d",
+            traceback_text=None,
+            occurred_at=occurred_at,
+            traceback_redacted=True,
+        )
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert "logged%20server-side" in link
+        # The timestamp used in the subject and body must match, so the
+        # developer can correlate the email with the server-side log entry.
+        assert link.count(quote("2026-01-02T03:04:05+00:00")) == 2
+
+    def test_no_traceback_available_when_never_captured(
+        self, valid_environ: dict[str, str]
+    ):
+        config_with_contact = self._config_with_contact_email(valid_environ)
+        dialog_config = RichErrorDialogConfig(title="t", description="d")
+
+        link = _get_mailto_link(dialog_config, config_with_contact)
+
+        assert link is not None
+        assert "No%20traceback%20available." in link
