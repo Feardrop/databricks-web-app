@@ -73,6 +73,14 @@ jobs:
   # Merges the release branch's version bump / changelog cutover back into
   # develop, so the next release/vX.Y.Z branch cut from develop starts from
   # an up-to-date version and changelog instead of the pre-release state.
+  #
+  # Root cause of #3 (confirmed from the v0.0.1 run's job logs): this job
+  # used to `git push origin develop` directly. `develop` has a repository
+  # ruleset requiring changes to go through a pull request, so that push was
+  # rejected with "GH013: Repository rule violations ... Changes must be
+  # made through a pull request" — the merge itself succeeded locally, only
+  # the push failed. Fixed by pushing to a dedicated branch and opening a PR
+  # into develop instead of pushing to it directly (see below).
   sync-develop:
     needs: release
     if: needs.release.outputs.released == 'true'
