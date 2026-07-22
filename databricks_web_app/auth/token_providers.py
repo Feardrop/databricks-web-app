@@ -18,8 +18,6 @@ from databricks.sql.auth.common import AzureAppId
 from databricks.sql.client import Connection
 from solara.lab import headers as solara_headers
 
-DEBUG = False
-
 log = logging.getLogger(__name__)
 
 
