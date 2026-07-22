@@ -17,9 +17,15 @@ CHANGELOG_PATH = Path(__file__).resolve().parent.parent.parent / "CHANGELOG.md"
 
 
 def extract_section(changelog_text: str, version: str) -> str:
-    """Return the body of the "## [<version>]" section, excluding its heading."""
+    """Return the body of the "## [<version>]" section, excluding its heading.
+
+    Stops at the next "## [" heading, or at the trailing block of Markdown
+    reference-style links (e.g. "[Unreleased]: https://...") that Keep a
+    Changelog puts at the end of the file, whichever comes first — the
+    section is otherwise unbounded when it's the last (or only) version.
+    """
     pattern = re.compile(
-        rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\Z)",
+        rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\n\[[^\]]+\]:|\Z)",
         re.DOTALL | re.MULTILINE,
     )
     match = pattern.search(changelog_text)
