@@ -7,23 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
-  close the Databricks SQL connection they open (via the connection's
-  context-manager protocol), even when the query raises. Previously every
-  call opened a connection that was never closed, leaking warehouse
-  sessions/sockets over a dashboard's lifetime. Fixes #5.
-- `_parse_databricks_token`'s error message said tokens must be 44
-  characters long; the actual (unchanged) pattern requires 38.
-- `connector.py` docstrings referenced a nonexistent `OAuthDatabricksConfig`
-  type instead of `AppConfig`, and had an "astract connector" typo.
-
-### Removed
-
-- `AppConfig._resolve_named_value` and `_parse_port`: both were unused dead
-  code (`_parse_port` wasn't wired to any config field). `connector.py`'s
-  unused `TypeVar` `T` was removed too. Part of #7.
+- A scheduled `drift-check.yml` workflow that fails if `main` ever ends up
+  ahead of `develop` (e.g. an unmerged sync-develop PR), so that no longer
+  goes unnoticed. Part of #3.
 
 ### Changed
 
@@ -35,6 +23,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AccessTokenUserHandler` and `AzureSPM2MOauthHandler` had identical,
   uninformative docstrings; differentiated (user-token vs.
   service-principal M2M). Part of #7.
+
+### Removed
+
+- `AppConfig._resolve_named_value` and `_parse_port`: both were unused dead
+  code (`_parse_port` wasn't wired to any config field). `connector.py`'s
+  unused `TypeVar` `T` was removed too. Part of #7.
+
+### Fixed
+
+- `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
+  close the Databricks SQL connection they open (via the connection's
+  context-manager protocol), even when the query raises. Previously every
+  call opened a connection that was never closed, leaking warehouse
+  sessions/sockets over a dashboard's lifetime. Fixes #5.
+- `_parse_databricks_token`'s error message said tokens must be 44
+  characters long; the actual (unchanged) pattern requires 38.
+- `connector.py` docstrings referenced a nonexistent `OAuthDatabricksConfig`
+  type instead of `AppConfig`, and had an "astract connector" typo.
+- `release.yml`'s `sync-develop` job now opens a PR to merge `main` back
+  into `develop` instead of pushing directly, which `develop`'s
+  pull-request-only ruleset was silently rejecting. Fixes #3.
 
 ## [0.0.1] - 2026-07-22
 
