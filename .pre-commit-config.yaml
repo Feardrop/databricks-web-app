@@ -1,0 +1,65 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.15.22
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 8.0.1
+    hooks:
+      - id: isort
+
+  - repo: local
+    hooks:
+      # Docstring linters run on the package only; test methods conventionally
+      # do not carry docstrings. This mirrors the CI configuration.
+      - id: pydoclint
+        name: pydoclint
+        entry: pydoclint --config=pyproject.toml
+        language: system
+        files: ^databricks_web_app/
+        types_or: [python, pyi]
+
+      - id: pydocstyle
+        name: pydocstyle
+        entry: pydocstyle
+        language: system
+        files: ^databricks_web_app/
+        types_or: [python, pyi]
+
+      - id: mypy
+        name: mypy
+        entry: mypy databricks_web_app
+        language: system
+        pass_filenames: false
+        files: ^databricks_web_app/.*\.py$
+        types_or: [python, pyi]
+
+      # Full test suite. Runs on push (not on every commit) so commits stay
+      # fast; install with `pre-commit install --hook-type pre-push`.
+      - id: pytest
+        name: pytest
+        entry: pytest -m "not slow"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

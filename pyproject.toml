@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "databricks-web-app"
+version = "0.0.1"
+description = "Reusable Python helpers for Solara web apps that authenticate users and query Databricks through OAuth and machine-to-machine flows."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [
+    { name = "Feardrop", email = "nphilipps@live.de" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+dependencies = [
+    "databricks-sql-connector[pyarrow]",
+    "pandas",
+    "pyjwt",
+    "python-dotenv",
+    "requests",
+    "solara>=1.29",
+    "starlette<1",
+    "typing-extensions",
+]
+
+[project.urls]
+Repository = "https://github.com/feardrop/databricks-web-app"
+Changelog = "https://github.com/feardrop/databricks-web-app/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["databricks_web_app*"]
+
+[tool.setuptools.package-data]
+databricks_web_app = ["py.typed"]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["databricks_web_app"]
+sections = ["FUTURE", "STDLIB", "FIRSTPARTY", "THIRDPARTY", "LOCALFOLDER"]
+extend_skip = ["venv"]
+
+[tool.ruff]
+show-fixes = true
+lint.per-file-ignores."__init__.py" = ["F401"]
+
+[tool.pydoclint]
+style = "google"
+allow-init-docstring = true
+check-type-hint = false
+
+[tool.pydocstyle]
+convention = "google"
+# D105 conflicts with D418 for @overload-decorated magic methods (e.g.
+# ConfigAttribute.__get__ in app_config.py): D105 wants a docstring, D418
+# forbids one on an overload stub. Overloads must stay undocumented, so D105
+# is disabled rather than silenced with a per-line suppression pydocstyle
+# doesn't support.
+add-ignore = ["D105"]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+markers = [
+    "slow: marks tests as slow, use e.g. for tests requiring a Databricks connection",
+]
+
+[tool.mypy]
+exclude = [
+    "^venv",
+]
+ignore_missing_imports = true
