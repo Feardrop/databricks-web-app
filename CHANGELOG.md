@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Rich error dialogs no longer render raw Python tracebacks to end users
+  outside of `SOLARA_APP_ENV=development`. The traceback is always logged
+  server-side first, so operators keep full detail while production users
+  see only the dialog's summary. Part of #9.
+
+### Changed
+
+- Rich error dialogs now use a theme-aware color palette and switch between
+  light and dark colors based on Solara's effective theme
+  (`solara.lab.use_dark_effective()`), instead of hardcoding light-only
+  colors. Part of #9.
+
 ### Fixed
 
 - `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now

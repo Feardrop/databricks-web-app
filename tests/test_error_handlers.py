@@ -9,7 +9,14 @@ from databricks_web_app.error_handlers.authentication import (
     ClientSecretExpiredErrorDialog,
     TokenExpiredErrorDialog,
 )
-from databricks_web_app.error_handlers.components import RichErrorDialogConfig
+from databricks_web_app.error_handlers.components import (
+    _DARK_PALETTE,
+    _LIGHT_PALETTE,
+    ErrorDetail,
+    RichErrorDialogBase,
+    RichErrorDialogConfig,
+    _resolve_palette,
+)
 from databricks_web_app.error_handlers.databricks import (
     DatabricksInvalidAccessTokenErrorDialog,
     DatabricksPermissionErrorDialog,
@@ -195,3 +202,52 @@ class TestRedactTracebackInProduction:
         redacted = handler._redact_traceback_in_production(config)
 
         assert redacted is config
+
+
+class TestResolvePalette:
+    """Tests for the light/dark color palette resolution."""
+
+    def test_light_by_default(self):
+        assert _resolve_palette(False) is _LIGHT_PALETTE
+
+    def test_dark_when_requested(self):
+        assert _resolve_palette(True) is _DARK_PALETTE
+
+    def test_light_and_dark_palettes_differ(self):
+        assert _LIGHT_PALETTE != _DARK_PALETTE
+
+
+class TestThemeAwareHtml:
+    """Tests that dialog HTML reflects the requested theme's colors."""
+
+    def test_body_html_uses_light_colors_by_default(self):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        body = RichErrorDialogBase.body_html(config)
+
+        assert _LIGHT_PALETTE.body_text in body
+        assert _DARK_PALETTE.body_text not in body
+
+    def test_body_html_uses_dark_colors_when_requested(self):
+        config = RichErrorDialogConfig(title="t", description="d")
+
+        body = RichErrorDialogBase.body_html(config, dark=True)
+
+        assert _DARK_PALETTE.body_text in body
+        assert _LIGHT_PALETTE.body_text not in body
+
+    def test_details_section_uses_dark_colors_when_requested(self):
+        details = [ErrorDetail(label="Table", value="main.default.foo")]
+
+        details_html = RichErrorDialogBase._details_section_html(details, dark=True)
+
+        assert _DARK_PALETTE.details_bg in details_html
+        assert _LIGHT_PALETTE.details_bg not in details_html
+
+    def test_traceback_section_uses_dark_colors_when_requested(self):
+        traceback_html = RichErrorDialogBase._traceback_section_html(
+            "Traceback: boom", dark=True
+        )
+
+        assert _DARK_PALETTE.code_bg in traceback_html
+        assert _LIGHT_PALETTE.code_bg not in traceback_html
