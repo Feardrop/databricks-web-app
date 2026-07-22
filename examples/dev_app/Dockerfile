@@ -1,14 +1,12 @@
 # Template Dockerfile for a project consuming databricks-web-app.
 # Adapted from a real consumer's Dockerfile; adjust paths/ports as needed.
-#
-# Before building, compile requirements.txt from requirements.in:
-#   pip install pip-tools
-#   pip-compile requirements.in
+# Builds with a single `docker compose up --build`; no pre-compile step.
 
 FROM python:3.10-bullseye
 
 # Core Python build deps
 RUN apt-get update && apt-get install -y \
+    git \
     python3-pip \
     python3-dev \
     python3-setuptools \
@@ -34,11 +32,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /web-app
 
 # Copy deps first (cache layer)
-COPY requirements.txt .
+COPY requirements.in .
 
-# Install Python deps via uv
+# Install Python deps via uv. requirements.in pulls databricks-web-app straight
+# from git, so no pip-compile lockfile step is needed to build this example.
 RUN uv pip install --system --compile \
-    -r requirements.txt
+    -r requirements.in
 
 # Copy full source
 COPY . .

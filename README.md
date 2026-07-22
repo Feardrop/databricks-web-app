@@ -183,72 +183,34 @@ something to copy into a new project.
 
 A consuming project is a small wrapper around this package: a Solara
 `dashboard.py` (development UI) plus a `server_app.py` exposing the ASGI app
-from `get_server_app()` (production), both under `src/`, driven by a
-Dockerfile that picks between the two based on `SOLARA_APP_ENV`.
+from `get_server_app()` (production), both under `src/`, driven by a Dockerfile
+whose entrypoint picks between the two based on `SOLARA_APP_ENV`.
 
 ```
 web-app/
-├── Dockerfile
-├── entrypoint_command.sh
-├── docker-compose-dev.yml
+├── Dockerfile               # installs databricks-web-app from requirements.in
+├── entrypoint_command.sh    # SOLARA_APP_ENV=development -> solara run; else uvicorn
+├── docker-compose-dev.yml   # loads .env, mounts .env-secrets via SECRETS_FILE
 ├── requirements.in          # databricks-web-app @ git+https://...
 └── src/
-    ├── dashboard.py         # Solara UI; run with `solara run` in development
-    └── server_app.py        # `app = get_server_app()`, run with uvicorn in production
+    ├── dashboard.py         # Solara UI (development)
+    └── server_app.py        # app = get_server_app() (production)
 ```
 
-`entrypoint_command.sh` picks the mode:
+The two things worth knowing when adapting this:
 
-```sh
-#!/bin/sh
-set -eu
+- **Config vs. secrets.** Non-sensitive `AppConfig` values come from `.env`
+  (compose `env_file`); secrets live in a separate file mounted as a Docker
+  secret and read through `SECRETS_FILE` — never bake them into the image.
+- **One image, two modes.** The entrypoint runs `solara run` in development and
+  `uvicorn server_app:app` in production, selected by `SOLARA_APP_ENV`.
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-cd "$SCRIPT_DIR"
-cd ./src
+[`examples/dev_app`](examples/dev_app) is a complete, runnable version of this
+layout. After filling in its `.env`/`.env-secrets`, one command starts it:
 
-if [ "${SOLARA_APP_ENV:-}" = "development" ]; then
-  exec solara run ./dashboard.py --host=0.0.0.0 --production
-else
-  exec uvicorn --workers 1 --host 0.0.0.0 --port 8765 server_app:app \
-     --ssl-keyfile=../ssl/priv-key.pem --ssl-certfile=../ssl/fullchain.pem \
-     --proxy-headers --root-path /tools/<project-name>
-fi
+```bash
+docker compose -f docker-compose-dev.yml up --build
 ```
-
-The `Dockerfile` installs from a compiled `requirements.txt` (via
-`pip-compile requirements.in`), copies the project, and sets
-`ENTRYPOINT ["/web-app/entrypoint_command.sh"]` with `ENV SOLARA_APP=dashboard.py`
-and `WORKDIR /web-app/src`.
-
-For local development, `docker-compose-dev.yml` loads non-sensitive
-`AppConfig` values from `.env` (`env_file`) and mounts a secrets file as a
-Docker secret, consumed through `SECRETS_FILE`:
-
-```yaml
-services:
-  web-app-dev:
-    build: .
-    environment:
-      SOLARA_APP_ENV: development
-      SECRETS_FILE: /run/secrets/.env-secrets
-    env_file:
-      - .env
-    secrets:
-      - .env-secrets
-    volumes:
-      - ./.env-secrets:/run/secrets/.env-secrets:ro
-    ports:
-      - "8765:8765"
-
-secrets:
-  .env-secrets:
-    file: .env-secrets
-```
-
-See [`examples/dev_app`](examples/dev_app) for the complete, runnable versions
-of all four files plus `.env`/`.env-secrets` templates covering every
-`AppConfig` variable.
 
 ## Development
 

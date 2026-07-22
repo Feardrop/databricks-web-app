@@ -27,17 +27,19 @@ SECRETS_FILE=examples/dev_app/.env-secrets SOLARA_APP_ENV=development \
 
 ## Run with Docker (mirrors a production-like deployment)
 
+Create your env files once, then start it with a single command:
+
 ```bash
 cd examples/dev_app
 cp .env.example .env
 cp .env-secrets.example .env-secrets
-# edit both files, then compile the lockfile Docker expects:
-pip install pip-tools
-pip-compile requirements.in
+# edit both files with real values, then:
 docker compose -f docker-compose-dev.yml up --build
 ```
 
-The app is served at `http://localhost:8765`.
+The app is served at `http://localhost:8765`. The image installs
+`databricks-web-app` straight from git via `requirements.in`, so there is no
+lockfile to compile first.
 
 ## What each file demonstrates
 
