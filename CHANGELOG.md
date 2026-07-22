@@ -42,6 +42,9 @@ the initial `0.0.1` release.
   from `develop` and PR'd into `main`. `.github/workflows/ci.yml` gained a
   `branch-policy` job that fails any PR into `main` whose source branch
   isn't `release/*`, and now also runs on pushes to `develop`/`release/**`.
+  Also added a `test-summary` job giving the `test` matrix a single stable
+  check name for branch protection to require (a literal `test` check never
+  gets reported for a matrix job).
 - `.github/workflows/release.yml`: after CI passes on `main`, publishes a
   GitHub Release (tag, changelog excerpt, built sdist/wheel) whenever
   `pyproject.toml`'s version doesn't have a matching tag yet, then merges

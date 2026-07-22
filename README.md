@@ -270,6 +270,14 @@ feature/* ──PR──▶ develop ──branch──▶ release/vX.Y.Z ──P
                      └─────────────── auto merge-back ──────────┘
 ```
 
+If you add required status checks in branch protection, require `lint`,
+`test-summary`, and (for `main`) `branch-policy` — **not** `test`. `test` is
+a matrix job, so GitHub reports each Python version as its own check
+(`test (3.10)`, etc.) and never a check literally named `test`; requiring
+that name leaves the PR waiting on a check that will never arrive.
+`test-summary` exists specifically to give the matrix one stable required
+name.
+
 ### Releasing
 
 1. From `develop`, create `release/vX.Y.Z` (decide the version from what's
