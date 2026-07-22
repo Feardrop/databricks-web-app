@@ -7,11 +7,11 @@ always closes the connection it opens — including when the query raises.
 
 from __future__ import annotations
 
-import pandas as pd
-import pytest
-
 from databricks_web_app import AppConfig
 from databricks_web_app.handlers.abstract import AbstractHandler
+
+import pandas as pd
+import pytest
 
 
 class _FakeArrowTable:
@@ -173,9 +173,7 @@ class TestGetColumns:
         df = handler.get_columns("main.default.my_table")
 
         assert connection.closed is True
-        assert cursor.executed[0].startswith(
-            "SELECT * FROM main.default.my_table"
-        )
+        assert cursor.executed[0].startswith("SELECT * FROM main.default.my_table")
         assert list(df["tag_db_alias"]) == ["col1", "col2"]
 
     def test_closes_connection_on_error(self, app_config: AppConfig):
