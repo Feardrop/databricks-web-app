@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import TypeVar, cast
+from typing import cast
 
 from databricks_web_app.handlers import (
     AccessTokenUserHandler,
@@ -14,9 +14,6 @@ from typing_extensions import TYPE_CHECKING
 if TYPE_CHECKING:
     from databricks_web_app.app_config import AppConfig
     from databricks_web_app.handlers.abstract import AbstractHandler
-
-
-T = TypeVar("T", bound="AbstractHandler")
 
 
 class AbstractConnector(ABC):

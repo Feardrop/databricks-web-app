@@ -201,16 +201,6 @@ def _parse_valid_file_path(value: Any) -> Path:
     return Path(result).expanduser()
 
 
-def _parse_port(value: Any) -> int:
-    """Parse a valid TCP port number."""
-    result = int(value)
-
-    if not 1 <= result <= 65535:
-        raise ConfigurationError("Port must be between 1 and 65535.")
-
-    return result
-
-
 def _parse_url(value: Any) -> str:
     """Parse a valid URL."""
     result = _parse_nonempty_string(value)
@@ -619,20 +609,6 @@ class AppConfig:
                 f"{AZURE_CLIENT_SECRET_PROXY} to reference another "
                 "variable."
             )
-
-    def _resolve_named_value(self, name: str) -> str:
-        """Resolve a named value using normal source precedence."""
-        environment_value = self._environ.get(name)
-
-        if environment_value:
-            return environment_value
-
-        secret_value = self._secrets.get(name)
-
-        if secret_value:
-            return secret_value
-
-        raise ConfigurationError(f"Missing required configuration field: {name}")
 
     def _validate(self) -> None:
         """Validate required and environment-specific values."""
