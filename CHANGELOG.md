@@ -14,6 +14,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   context-manager protocol), even when the query raises. Previously every
   call opened a connection that was never closed, leaking warehouse
   sessions/sockets over a dashboard's lifetime. Fixes #5.
+- `get_columns`'s `data_source` is now validated as identifier-shaped
+  (`table`, `schema.table`, or `catalog.schema.table`) before being
+  interpolated into SQL, rejecting obvious injection attempts. Part of #8.
+
+### Added
+
+- `AppConfig.databricks_host_suffixes` (env `DATABRICKS_HOST_SUFFIXES`):
+  configurable list of accepted Databricks workspace host suffixes,
+  defaulting to the documented Azure/AWS/GCP ones instead of Azure-only.
+  Part of #8.
+- `AppConfig.databricks_token_audience` (env `DATABRICKS_TOKEN_AUDIENCE`):
+  configurable JWT audience for user-token verification, for non-prod or
+  sovereign-cloud Databricks/Entra deployments. Defaults to the previous
+  hardcoded `AzureAppId.PROD` audience. Part of #8.
+
+### Changed
+
+- `get_columns`'s `default_columns` is now a required argument instead of
+  defaulting to the org-specific `("tag_db_alias",)`. Part of #8.
+- Labeled the remaining hardcoded example-only values (SSL cert paths in
+  `get_server_app`'s docstring, port/root-path in
+  `examples/dev_app/entrypoint_command.sh`) more clearly as placeholders to
+  adjust, not required values. Part of #8.
 
 ## [0.0.1] - 2026-07-22
 
