@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   context-manager protocol), even when the query raises. Previously every
   call opened a connection that was never closed, leaking warehouse
   sessions/sockets over a dashboard's lifetime. Fixes #5.
+- `release.yml`'s `sync-develop` job now opens a PR to merge `main` back
+  into `develop` instead of pushing directly, which `develop`'s
+  pull-request-only ruleset was silently rejecting. Fixes #3.
+
+### Added
+
+- A scheduled `drift-check.yml` workflow that fails if `main` ever ends up
+  ahead of `develop` (e.g. an unmerged sync-develop PR), so that no longer
+  goes unnoticed. Part of #3.
 
 ## [0.0.1] - 2026-07-22
 
