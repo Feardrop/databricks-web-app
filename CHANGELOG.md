@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A scheduled `drift-check.yml` workflow that fails if `main` ever ends up
+  ahead of `develop` (e.g. an unmerged sync-develop PR), so that no longer
+  goes unnoticed. Part of #3.
+- `AppConfig.databricks_host_suffixes` (env `DATABRICKS_HOST_SUFFIXES`):
+  configurable list of accepted Databricks workspace host suffixes,
+  defaulting to the documented Azure/AWS/GCP ones instead of Azure-only.
+  Part of #8.
+- `AppConfig.databricks_token_audience` (env `DATABRICKS_TOKEN_AUDIENCE`):
+  configurable JWT audience for user-token verification, for non-prod or
+  sovereign-cloud Databricks/Entra deployments. Defaults to the previous
+  hardcoded `AzureAppId.PROD` audience. Part of #8.
 - Test coverage for previously-untested modules: `handlers/sql_handler.py`
   (`AccessTokenUserHandler`/`AzureSPM2MOauthHandler` connection setup),
   `auth/token_providers.py` (`UserTokenProvider._verify_token`,
@@ -19,6 +30,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the job summary, and fails if `databricks_web_app/` coverage drops
   below 75% (baseline is ~81%). Part of #6.
 
+### Changed
+
+- Four `ConfigAttribute` "docstrings" in `AppConfig`
+  (`m2m_client_id`/`m2m_client_secret`, `*_proxy`) were f-strings used as
+  bare expression statements — not string literals, so no tooling ever
+  captured them as attribute docstrings. Converted to plain string
+  literals. Part of #7.
+- `AccessTokenUserHandler` and `AzureSPM2MOauthHandler` had identical,
+  uninformative docstrings; differentiated (user-token vs.
+  service-principal M2M). Part of #7.
+- Replaced all remaining `print()` calls in `auth/token_providers.py` and
+  `handlers/sql_handler.py` with `log.debug(...)`, so output goes through
+  normal logging levels/handlers instead of unconditionally hitting stdout.
+  Part of #4.
+- `AppConfig` no longer calls `logging.basicConfig(..., force=True)` in
+  development — a library shouldn't reconfigure the whole application's root
+  logger (`force=True` was tearing down any handlers the consuming app had
+  installed). Logging configuration is now entirely up to the consumer.
+  Part of #4.
+- `get_columns`'s `default_columns` is now a required argument instead of
+  defaulting to the org-specific `("tag_db_alias",)`. Part of #8.
+- Labeled the remaining hardcoded example-only values (SSL cert paths in
+  `get_server_app`'s docstring, port/root-path in
+  `examples/dev_app/entrypoint_command.sh`) more clearly as placeholders to
+  adjust, not required values. Part of #8.
+- Rich error dialogs now use a theme-aware color palette and switch between
+  light and dark colors based on Solara's effective theme
+  (`solara.lab.use_dark_effective()`), instead of hardcoding light-only
+  colors. Part of #9.
+
+### Removed
+
+- `AppConfig._resolve_named_value` and `_parse_port`: both were unused dead
+  code (`_parse_port` wasn't wired to any config field). `connector.py`'s
+  unused `TypeVar` `T` was removed too. Part of #7.
+
 ### Fixed
 
 - `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
@@ -26,6 +73,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   context-manager protocol), even when the query raises. Previously every
   call opened a connection that was never closed, leaking warehouse
   sessions/sockets over a dashboard's lifetime. Fixes #5.
+- `get_columns`'s `data_source` is now validated as identifier-shaped
+  (`table`, `schema.table`, or `catalog.schema.table`) before being
+  interpolated into SQL, rejecting obvious injection attempts. Part of #8.
+- `_parse_databricks_token`'s error message said tokens must be 44
+  characters long; the actual (unchanged) pattern requires 38.
+- `connector.py` docstrings referenced a nonexistent `OAuthDatabricksConfig`
+  type instead of `AppConfig`, and had an "astract connector" typo.
+- `release.yml`'s `sync-develop` job now opens a PR to merge `main` back
+  into `develop` instead of pushing directly, which `develop`'s
+  pull-request-only ruleset was silently rejecting. Fixes #3.
+
+### Security
+
+- `UserTokenProvider._verify_token` no longer prints the raw bearer token or
+  decoded JWT claims to stdout under its (now-removed) `DEBUG` flag. Fixes #4.
+- Rich error dialogs no longer render raw Python tracebacks to end users
+  outside of `SOLARA_APP_ENV=development`. The traceback is always logged
+  server-side first, so operators keep full detail while production users
+  see only the dialog's summary. Part of #9.
+- The "Contact developers" mailto link's body now tells the recipient that
+  the complete error details were logged server-side (rather than silently
+  showing "No traceback available.") and includes the exact timestamp used
+  in both the email subject and the server-side log entry, so a contacted
+  developer can find the corresponding log line. Part of #9.
 
 ## [0.0.1] - 2026-07-22
 

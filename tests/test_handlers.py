@@ -206,11 +206,11 @@ class TestGetColumns:
     def test_closes_connection_on_success(self, app_config: AppConfig):
         handler, connection, cursor = _make_handler(app_config)
 
-        df = handler.get_columns("main.default.my_table")
+        df = handler.get_columns("main.default.my_table", default_columns=("name",))
 
         assert connection.closed is True
         assert cursor.executed[0].startswith("SELECT * FROM main.default.my_table")
-        assert list(df["tag_db_alias"]) == ["col1", "col2"]
+        assert list(df["name"]) == ["col1", "col2"]
 
     def test_closes_connection_on_error(self, app_config: AppConfig):
         handler, connection, _ = _make_handler(
@@ -218,13 +218,46 @@ class TestGetColumns:
         )
 
         with pytest.raises(RuntimeError):
-            handler.get_columns("main.default.my_table")
+            handler.get_columns("main.default.my_table", default_columns=("name",))
 
         assert connection.closed is True
 
-    def test_uses_custom_default_columns(self, app_config: AppConfig):
+    def test_uses_given_default_columns(self, app_config: AppConfig):
         handler, _, _ = _make_handler(app_config)
 
         df = handler.get_columns("main.default.my_table", default_columns=("name",))
 
         assert list(df.columns) == ["name"]
+
+    @pytest.mark.parametrize(
+        "data_source",
+        [
+            "my_table",
+            "my_schema.my_table",
+            "main.default.my_table",
+            "`weird table`",
+            "main.default.`weird table`",
+        ],
+    )
+    def test_accepts_valid_identifiers(self, app_config: AppConfig, data_source: str):
+        handler, _, cursor = _make_handler(app_config)
+
+        handler.get_columns(data_source, default_columns=("name",))
+
+        assert cursor.executed[0].startswith(f"SELECT * FROM {data_source}")
+
+    @pytest.mark.parametrize(
+        "data_source",
+        [
+            "main.default.my_table; DROP TABLE users--",
+            "my_table WHERE 1=1",
+            "a.b.c.d",
+            "",
+            "'; DROP TABLE users--",
+        ],
+    )
+    def test_rejects_invalid_identifiers(self, app_config: AppConfig, data_source: str):
+        handler, _, _ = _make_handler(app_config)
+
+        with pytest.raises(ValueError, match="Invalid data_source identifier"):
+            handler.get_columns(data_source, default_columns=("name",))
