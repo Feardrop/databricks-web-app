@@ -161,7 +161,7 @@ def _parse_databricks_token(value: Any) -> str:
     if not re.match(r"^dapi[a-z0-9]{32}-2$", result):
         raise ConfigurationError(
             "Invalid Databricks token. "
-            "Must start with 'dapi' and end with '-2' and be 44 characters long."
+            "Must start with 'dapi' and end with '-2' and be 38 characters long."
         )
 
     return result

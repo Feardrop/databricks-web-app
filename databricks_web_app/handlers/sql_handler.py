@@ -12,7 +12,11 @@ if TYPE_CHECKING:
 
 
 class AccessTokenUserHandler(AbstractHandler):
-    """Execute SQL statements against Databricks."""
+    """Execute SQL statements against Databricks as the signed-in user.
+
+    Authenticates with the user's OAuth access token (or, in development,
+    the configured ``DATABRICKS_TOKEN`` PAT) rather than a service principal.
+    """
 
     def get_connection(self) -> "Connection":
         """Return a connection object for user authentication."""
@@ -31,7 +35,12 @@ class AccessTokenUserHandler(AbstractHandler):
 
 
 class AzureSPM2MOauthHandler(AbstractHandler):
-    """Execute SQL statements against Databricks."""
+    """Execute SQL statements against Databricks as the app's service principal.
+
+    Authenticates via Azure AD machine-to-machine (M2M) OAuth using the
+    configured Azure Service Principal client ID/secret, independent of any
+    signed-in user.
+    """
 
     def get_connection(self) -> "Connection":
         """Return a connection object for application authentication."""
