@@ -106,6 +106,32 @@ Build a custom connector by subclassing `AbstractConnector` and wiring your
 own handler factories; see the docstring on `AbstractConnector` for a minimal
 example.
 
+### Reusing one connector across requests with DatabricksApp
+
+Constructing a connector on every request is wasteful. `DatabricksApp` holds
+one lazily-constructed connector per process — build it once at import time
+and pull the handler out wherever you need it:
+
+```python
+from databricks_web_app import AppConfig, DatabricksApp, DatabricksUserAndM2MConnector
+
+config = AppConfig()
+
+
+class MyApp(DatabricksApp[DatabricksUserAndM2MConnector]):
+    connector_class = DatabricksUserAndM2MConnector
+
+
+app = MyApp(config)
+
+# Elsewhere, e.g. inside a Solara component's event handler:
+df = app.databricks_handler.user_handler.fetchall_df("SELECT 1")
+```
+
+`app.databricks_handler` builds the connector on first access and reuses it
+afterwards; setting it directly raises `AttributeError` on purpose — set
+`connector_class` instead.
+
 ### Solara error boundary and user info
 
 ```python
@@ -141,6 +167,87 @@ def Page():
 
 See the docstring on `OAuthDatabricksErrorBoundary` for the full dashboard
 wiring pattern (header, footer, layout fallback).
+
+### Full example
+
+[`examples/dev_app`](examples/dev_app) is a small, runnable consuming project
+that wires up all of the above (`AppConfig`, `DatabricksApp`,
+`DatabricksUserAndM2MConnector`, `OAuthDatabricksErrorBoundary`,
+`SolaraUserInfoBinding`, `get_server_app`). Its `src/dashboard.py` and
+`src/server_app.py` are also imported directly by this repository's test
+suite, so they stay accurate as the package evolves. Start there if you want
+something to copy into a new project.
+
+## Deploying a consuming project
+
+A consuming project is a small wrapper around this package: a Solara
+`dashboard.py` (development UI) plus a `server_app.py` exposing the ASGI app
+from `get_server_app()` (production), both under `src/`, driven by a
+Dockerfile that picks between the two based on `SOLARA_APP_ENV`.
+
+```
+web-app/
+├── Dockerfile
+├── entrypoint_command.sh
+├── docker-compose-dev.yml
+├── requirements.in          # databricks-web-app @ git+https://...
+└── src/
+    ├── dashboard.py         # Solara UI; run with `solara run` in development
+    └── server_app.py        # `app = get_server_app()`, run with uvicorn in production
+```
+
+`entrypoint_command.sh` picks the mode:
+
+```sh
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+cd ./src
+
+if [ "${SOLARA_APP_ENV:-}" = "development" ]; then
+  exec solara run ./dashboard.py --host=0.0.0.0 --production
+else
+  exec uvicorn --workers 1 --host 0.0.0.0 --port 8765 server_app:app \
+     --ssl-keyfile=../ssl/priv-key.pem --ssl-certfile=../ssl/fullchain.pem \
+     --proxy-headers --root-path /tools/<project-name>
+fi
+```
+
+The `Dockerfile` installs from a compiled `requirements.txt` (via
+`pip-compile requirements.in`), copies the project, and sets
+`ENTRYPOINT ["/web-app/entrypoint_command.sh"]` with `ENV SOLARA_APP=dashboard.py`
+and `WORKDIR /web-app/src`.
+
+For local development, `docker-compose-dev.yml` loads non-sensitive
+`AppConfig` values from `.env` (`env_file`) and mounts a secrets file as a
+Docker secret, consumed through `SECRETS_FILE`:
+
+```yaml
+services:
+  web-app-dev:
+    build: .
+    environment:
+      SOLARA_APP_ENV: development
+      SECRETS_FILE: /run/secrets/.env-secrets
+    env_file:
+      - .env
+    secrets:
+      - .env-secrets
+    volumes:
+      - ./.env-secrets:/run/secrets/.env-secrets:ro
+    ports:
+      - "8765:8765"
+
+secrets:
+  .env-secrets:
+    file: .env-secrets
+```
+
+See [`examples/dev_app`](examples/dev_app) for the complete, runnable versions
+of all four files plus `.env`/`.env-secrets` templates covering every
+`AppConfig` variable.
 
 ## Development
 

@@ -57,6 +57,12 @@ check-type-hint = false
 
 [tool.pydocstyle]
 convention = "google"
+# D105 conflicts with D418 for @overload-decorated magic methods (e.g.
+# ConfigAttribute.__get__ in app_config.py): D105 wants a docstring, D418
+# forbids one on an overload stub. Overloads must stay undocumented, so D105
+# is disabled rather than silenced with a per-line suppression pydocstyle
+# doesn't support.
+add-ignore = ["D105"]
 
 [tool.pytest.ini_options]
 pythonpath = "."

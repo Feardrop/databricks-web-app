@@ -23,7 +23,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install black isort mypy pydoclint==0.0.8 "pydocstyle[toml]" pytest ruff
+          pip install black isort mypy pydoclint==0.0.8 "pydocstyle[toml]" pytest ruff httpx
 
       - name: Ruff
         run: ruff check .

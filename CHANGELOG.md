@@ -12,8 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `README.md` with installation, configuration, and usage documentation.
 - `LICENSE` (MIT).
 - `py.typed` marker so consumers' type checkers pick up inline type hints.
-- Unit tests for `AppConfig` parsing/validation, error-handler matching, and
-  `solara_components` helper functions.
+- Unit tests for `AppConfig` parsing/validation, error-handler matching,
+  `solara_components` helper functions, `DatabricksApp`/`get_server_app`, and
+  the connector classes.
+- `examples/dev_app`: a runnable reference consumer (`src/dashboard.py`,
+  `src/server_app.py`, `Dockerfile`, `entrypoint_command.sh`,
+  `docker-compose-dev.yml`, `.env`/`.env-secrets` templates) plus integration
+  tests that import it directly to catch drift between the docs and the
+  package API.
+- README sections on reusing a connector via `DatabricksApp` and on deploying
+  a consuming project (Docker/entrypoint/compose pattern).
 - GitHub Actions CI workflow running lint and tests.
 
 ### Fixed

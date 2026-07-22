@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from databricks_web_app import AppConfig
+
 import pytest
 
 
@@ -19,6 +21,12 @@ def valid_environ() -> dict[str, str]:
         "DATA_ACCESS_MANAGEMENT_URL": "https://example.com/access-management",
         "DATA_ACCESS_PACKAGES_URL": "https://example.com/access-packages",
     }
+
+
+@pytest.fixture
+def app_config(valid_environ: dict[str, str]) -> AppConfig:
+    """Return an AppConfig built from ``valid_environ``."""
+    return AppConfig(environ=valid_environ)
 
 
 def make_environ(base: Mapping[str, str], **overrides: str) -> dict[str, str]:

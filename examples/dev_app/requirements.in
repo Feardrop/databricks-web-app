@@ -1,0 +1,3 @@
+# Template requirements.in for a project consuming databricks-web-app.
+# Pin to a tag or commit instead of @main for reproducible builds.
+databricks-web-app @ git+https://github.com/feardrop/databricks-web-app.git@main

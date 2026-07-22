@@ -19,11 +19,6 @@ import pytest
 import requests
 
 
-@pytest.fixture
-def app_config(valid_environ: dict[str, str]) -> AppConfig:
-    return AppConfig(environ=valid_environ)
-
-
 class TestRichErrorDialogConfig:
     """Tests for the dialog-content validation."""
 
