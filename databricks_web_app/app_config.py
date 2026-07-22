@@ -172,7 +172,7 @@ def _parse_databricks_token(value: Any) -> str:
     if not re.match(r"^dapi[a-z0-9]{32}-2$", result):
         raise ConfigurationError(
             "Invalid Databricks token. "
-            "Must start with 'dapi' and end with '-2' and be 44 characters long."
+            "Must start with 'dapi' and end with '-2' and be 38 characters long."
         )
 
     return result
@@ -210,16 +210,6 @@ def _parse_valid_file_path(value: Any) -> Path:
     result = _parse_nonempty_string(value)
 
     return Path(result).expanduser()
-
-
-def _parse_port(value: Any) -> int:
-    """Parse a valid TCP port number."""
-    result = int(value)
-
-    if not 1 <= result <= 65535:
-        raise ConfigurationError("Port must be between 1 and 65535.")
-
-    return result
 
 
 def _parse_url(value: Any) -> str:
@@ -300,27 +290,27 @@ class AppConfig:
         env=AZURE_CLIENT_ID_PROXY,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Proxy name of the environment variable containing the Client ID of the
-    application for M2M authentication. Set either this or {AZURE_CLIENT_ID}.
+    application for M2M authentication. Set either this or AZURE_CLIENT_ID.
     """
 
     m2m_client_secret_proxy = ConfigAttribute(
         env=AZURE_CLIENT_SECRET_PROXY,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Proxy name of the environment variable containing the Client secret of the
-    application for M2M authentication. Set either this or {AZURE_CLIENT_SECRET}.
+    application for M2M authentication. Set either this or AZURE_CLIENT_SECRET.
     """
 
     m2m_client_id = ConfigAttribute(
         env=AZURE_CLIENT_ID,
         transform=_parse_uuid,
     )
-    f"""
+    """
     Client ID of the primary Azure application for M2M authentication.
-    Set either this or {AZURE_CLIENT_ID_PROXY}.
+    Set either this or AZURE_CLIENT_ID_PROXY.
     """
 
     m2m_client_secret = ConfigAttribute(
@@ -328,9 +318,9 @@ class AppConfig:
         sensitive=True,
         transform=_parse_nonempty_string,
     )
-    f"""
+    """
     Client secret of the primary Azure application for M2M authentication.
-    Set either this or {AZURE_CLIENT_SECRET_PROXY}.
+    Set either this or AZURE_CLIENT_SECRET_PROXY.
     """
 
     data_access_management_url = ConfigAttribute(
@@ -414,7 +404,6 @@ class AppConfig:
         self._load_declared_values(self._secrets, "secrets file")
         self._load_declared_values(self._environ, "environment")
         self._load_keyword_arguments(kwargs)
-        self._set_logger()
         self._validate()
         self._resolve_indirect_credentials()
 
@@ -535,11 +524,11 @@ class AppConfig:
 
         if not path.is_file():
             msg = f"{SECRETS_FILE} does not exist or is not a file: {path!s}"
-            logging.error(msg) if not self.is_development else logging.debug(msg)
+            logger.error(msg) if not self.is_development else logger.debug(msg)
             try:
                 find_dotenv(path.parts[-1], raise_error_if_not_found=True)
             except IOError as error:
-                logging.error(f"Could not find {path.parts[-1]} file: {error}")
+                logger.error(f"Could not find {path.parts[-1]} file: {error}")
 
         loaded_values = dotenv_values(path)
 
@@ -663,20 +652,6 @@ class AppConfig:
                 "variable."
             )
 
-    def _resolve_named_value(self, name: str) -> str:
-        """Resolve a named value using normal source precedence."""
-        environment_value = self._environ.get(name)
-
-        if environment_value:
-            return environment_value
-
-        secret_value = self._secrets.get(name)
-
-        if secret_value:
-            return secret_value
-
-        raise ConfigurationError(f"Missing required configuration field: {name}")
-
     def _validate(self) -> None:
         """Validate required and environment-specific values."""
         missing = [
@@ -703,14 +678,6 @@ class AppConfig:
 
         if self.is_development and not self.databricks_token:
             raise ConfigurationError("DATABRICKS_TOKEN is required in development.")
-
-    def _set_logger(self):
-        if self.is_development:
-            logging.basicConfig(
-                level=os.environ.get("LOG_LEVEL", logging.INFO),
-                format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-                force=True,  # Python >= 3.8
-            )
 
     def __repr__(self) -> str:
         """Represents the string representation of an object for debugging purposes.

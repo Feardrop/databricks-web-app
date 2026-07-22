@@ -7,19 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
-  close the Databricks SQL connection they open (via the connection's
-  context-manager protocol), even when the query raises. Previously every
-  call opened a connection that was never closed, leaking warehouse
-  sessions/sockets over a dashboard's lifetime. Fixes #5.
-- `get_columns`'s `data_source` is now validated as identifier-shaped
-  (`table`, `schema.table`, or `catalog.schema.table`) before being
-  interpolated into SQL, rejecting obvious injection attempts. Part of #8.
-
 ### Added
 
+- A scheduled `drift-check.yml` workflow that fails if `main` ever ends up
+  ahead of `develop` (e.g. an unmerged sync-develop PR), so that no longer
+  goes unnoticed. Part of #3.
 - `AppConfig.databricks_host_suffixes` (env `DATABRICKS_HOST_SUFFIXES`):
   configurable list of accepted Databricks workspace host suffixes,
   defaulting to the documented Azure/AWS/GCP ones instead of Azure-only.
@@ -31,12 +23,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Four `ConfigAttribute` "docstrings" in `AppConfig`
+  (`m2m_client_id`/`m2m_client_secret`, `*_proxy`) were f-strings used as
+  bare expression statements — not string literals, so no tooling ever
+  captured them as attribute docstrings. Converted to plain string
+  literals. Part of #7.
+- `AccessTokenUserHandler` and `AzureSPM2MOauthHandler` had identical,
+  uninformative docstrings; differentiated (user-token vs.
+  service-principal M2M). Part of #7.
+- Replaced all remaining `print()` calls in `auth/token_providers.py` and
+  `handlers/sql_handler.py` with `log.debug(...)`, so output goes through
+  normal logging levels/handlers instead of unconditionally hitting stdout.
+  Part of #4.
+- `AppConfig` no longer calls `logging.basicConfig(..., force=True)` in
+  development — a library shouldn't reconfigure the whole application's root
+  logger (`force=True` was tearing down any handlers the consuming app had
+  installed). Logging configuration is now entirely up to the consumer.
+  Part of #4.
 - `get_columns`'s `default_columns` is now a required argument instead of
   defaulting to the org-specific `("tag_db_alias",)`. Part of #8.
 - Labeled the remaining hardcoded example-only values (SSL cert paths in
   `get_server_app`'s docstring, port/root-path in
   `examples/dev_app/entrypoint_command.sh`) more clearly as placeholders to
   adjust, not required values. Part of #8.
+
+### Removed
+
+- `AppConfig._resolve_named_value` and `_parse_port`: both were unused dead
+  code (`_parse_port` wasn't wired to any config field). `connector.py`'s
+  unused `TypeVar` `T` was removed too. Part of #7.
+
+### Fixed
+
+- `AbstractHandler.fetchall_df`, `exec_statement`, and `get_columns` now
+  close the Databricks SQL connection they open (via the connection's
+  context-manager protocol), even when the query raises. Previously every
+  call opened a connection that was never closed, leaking warehouse
+  sessions/sockets over a dashboard's lifetime. Fixes #5.
+- `get_columns`'s `data_source` is now validated as identifier-shaped
+  (`table`, `schema.table`, or `catalog.schema.table`) before being
+  interpolated into SQL, rejecting obvious injection attempts. Part of #8.
+- `_parse_databricks_token`'s error message said tokens must be 44
+  characters long; the actual (unchanged) pattern requires 38.
+- `connector.py` docstrings referenced a nonexistent `OAuthDatabricksConfig`
+  type instead of `AppConfig`, and had an "astract connector" typo.
+- `release.yml`'s `sync-develop` job now opens a PR to merge `main` back
+  into `develop` instead of pushing directly, which `develop`'s
+  pull-request-only ruleset was silently rejecting. Fixes #3.
+
+### Security
+
+- `UserTokenProvider._verify_token` no longer prints the raw bearer token or
+  decoded JWT claims to stdout under its (now-removed) `DEBUG` flag. Fixes #4.
 
 ## [0.0.1] - 2026-07-22
 

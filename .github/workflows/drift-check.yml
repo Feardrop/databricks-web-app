@@ -1,0 +1,34 @@
+name: Develop/Main Drift Check
+
+# Fails loudly if `main` has commits that `develop` doesn't. This normally
+# means a release's "sync-develop" PR (see .github/workflows/release.yml)
+# was never merged, or the merge itself failed — see issue #3. A red run
+# here is the signal to go check for an open chore/sync-develop-after-vX.Y.Z
+# PR against develop.
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail if main is ahead of develop
+        run: |
+          git fetch origin main develop
+          behind="$(git log --oneline origin/develop..origin/main)"
+
+          if [ -n "$behind" ]; then
+            echo "::error::develop is missing commit(s) that are on main:"
+            echo "$behind"
+            echo
+            echo "This usually means a release's sync-develop PR was never merged (or failed). Check open PRs targeting develop, or merge main into develop manually: git checkout develop && git merge main"
+            exit 1
+          fi
+
+          echo "develop and main are in sync."

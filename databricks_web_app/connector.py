@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import TypeVar, cast
+from typing import cast
 
 from databricks_web_app.handlers import (
     AccessTokenUserHandler,
@@ -16,11 +16,8 @@ if TYPE_CHECKING:
     from databricks_web_app.handlers.abstract import AbstractHandler
 
 
-T = TypeVar("T", bound="AbstractHandler")
-
-
 class AbstractConnector(ABC):
-    """Use astract connector to send SQL queries to databricks.
+    """Use abstract connector to send SQL queries to databricks.
 
     Example:
         .. code::python
@@ -67,7 +64,7 @@ class DatabricksUserAndM2MConnector(AbstractConnector):
     instantiate the respective authentication handlers.
 
     Attributes:
-        config (OAuthDatabricksConfig): Configuration object containing settings for
+        config (AppConfig): Configuration object containing settings for
             OAuth integration with Databricks.
         user_handler (AbstractHandler): Instance of a handler responsible for user
             authentication, created using the specified factory function.
@@ -89,12 +86,12 @@ class DatabricksUserAndM2MConnector(AbstractConnector):
         """Initializes an instance of the class.
 
         Args:
-            config (OAuthDatabricksConfig): Configuration object containing settings
+            config (AppConfig): Configuration object containing settings
                 for OAuth integration with Databricks.
-            user_handler_factory (Callable[[OAuthDatabricksConfig], AbstractHandler]):
+            user_handler_factory (Callable[[AppConfig], AbstractHandler]):
                 Factory function to create a user authentication handler. Defaults to
                 AccessTokenUserHandler.
-            m2m_handler_factory (Callable[[OAuthDatabricksConfig], AbstractHandler]):
+            m2m_handler_factory (Callable[[AppConfig], AbstractHandler]):
                 Factory function to create a machine-to-machine authentication handler.
                 Defaults to AzureSPM2MOauthHandler.
         """

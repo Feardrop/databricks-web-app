@@ -18,8 +18,6 @@ from databricks.sql.auth.common import AzureAppId
 from databricks.sql.client import Connection
 from solara.lab import headers as solara_headers
 
-DEBUG = False
-
 log = logging.getLogger(__name__)
 
 
@@ -99,14 +97,14 @@ class UserTokenProvider(TokenProvider):
 
     def _acquire_token(self) -> str:
         """Retrieve user token from known sources."""
+        log.debug("Try retrieving token from in-memory dict.")
         try:
-            print("Try retrieving token from in-memory dict.")
             sid = solara.get_session_id()
             return TOKEN_BY_SESSION[sid]
         except Exception:  # pylint: disable=broad-exception-caught
-            print("Failed to retrieve access token from in-memory dict.")
+            log.debug("Failed to retrieve access token from in-memory dict.")
 
-        print("Fallback: Try retrieving access token from headers.")
+        log.debug("Fallback: Try retrieving access token from headers.")
         headers = solara_headers.value or {}  # type: ignore[attr-defined]
 
         return _require_access_token(headers)
@@ -114,9 +112,7 @@ class UserTokenProvider(TokenProvider):
     def _verify_token(self, token: str) -> str:
         """Verify JWT token."""
         if token.count(".") != 2:
-            if DEBUG:
-                print("Omit token verification as token is likely an opaque one.")
-                print(f"{token=}")
+            log.debug("Omit token verification as token is likely an opaque one.")
             return token
 
         # Get public key with which JWT is signed from IdP.
@@ -125,7 +121,7 @@ class UserTokenProvider(TokenProvider):
         audience = self.config.databricks_token_audience or AzureAppId.PROD.value[1]
 
         try:
-            decoded_token = jwt.decode(
+            jwt.decode(
                 token,
                 key=signing_key.key,
                 # Entra always signs tokens with RS256 (RSA + SHA-256)
@@ -137,8 +133,6 @@ class UserTokenProvider(TokenProvider):
                 # v2 token
                 issuer=self._issuer,  # v1 token
             )
-            if DEBUG:
-                print(f"{decoded_token=}")
         except jwt.exceptions.ExpiredSignatureError as exc:
             raise jwt.exceptions.ExpiredSignatureError(
                 "Token for data has expired."

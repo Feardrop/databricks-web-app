@@ -299,9 +299,16 @@ takes over automatically:
 - Otherwise builds the sdist/wheel, pulls that version's section out of
   `CHANGELOG.md` as release notes, and publishes a GitHub Release with the
   tag and built artifacts attached.
-- Merges `main` back into `develop` so the next release branch starts from
-  the bumped version and trimmed changelog. If that merge conflicts, the job
-  fails and needs a manual `git checkout develop && git merge main`.
+- Opens a `chore/sync-develop-after-vX.Y.Z` PR merging `main` back into
+  `develop`, so the next release branch starts from the bumped version and
+  trimmed changelog. **This PR needs a human to merge it** — `develop` only
+  accepts changes via pull request, so the workflow can't push directly. If
+  the merge itself conflicts, the job fails instead and needs a manual
+  `git checkout develop && git merge main`.
+
+A daily [drift-check workflow](.github/workflows/drift-check.yml) fails
+loudly if `main` ever ends up ahead of `develop` (e.g. because a
+sync-develop PR was left unmerged) — that's the signal to go look for one.
 
 No PyPI publishing is involved — see [Installation](#installation) for how
 consumers pin to a release tag.
