@@ -37,6 +37,20 @@ the initial `0.0.1` release.
   `pre-push` stage), plus README instructions for installing both hook stages.
 - `.github/pull_request_template.md`, with a checklist of Keep a Changelog
   categories (Added/Changed/Fixed/etc.) that a PR can check off multiple of.
+- A `develop` integration branch and a three-tier branching model: feature
+  branches target `develop`; releases are cut as `release/vX.Y.Z` branches
+  from `develop` and PR'd into `main`. `.github/workflows/ci.yml` gained a
+  `branch-policy` job that fails any PR into `main` whose source branch
+  isn't `release/*`, and now also runs on pushes to `develop`/`release/**`.
+- `.github/workflows/release.yml`: after CI passes on `main`, publishes a
+  GitHub Release (tag, changelog excerpt, built sdist/wheel) whenever
+  `pyproject.toml`'s version doesn't have a matching tag yet, then merges
+  `main` back into `develop`; a no-op otherwise. See the README's
+  "Branching"/"Releasing" sections for the manual steps.
+- `.github/scripts/extract_changelog_section.py`, used by the release
+  workflow to pull one version's notes out of `CHANGELOG.md`.
+- `CLAUDE.md` with the package architecture, branching/release model, and
+  lint-scoping quirks, for future AI-assisted work in this repo.
 
 ### Changed
 

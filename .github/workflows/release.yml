@@ -1,0 +1,96 @@
+name: Release
+
+# Fires after CI finishes on main — i.e. once a release/vX.Y.Z branch has
+# been merged there (see README "Branching"/"Releasing"). It only actually
+# releases when pyproject.toml's version has no matching git tag yet, so
+# it's a no-op for every push to main that isn't a release. To cut a
+# release: branch release/vX.Y.Z off develop, bump `version` in
+# pyproject.toml, move the CHANGELOG.md [Unreleased] section to a dated
+# "## [<version>] - YYYY-MM-DD" section, and PR that branch into main.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.check.outputs.exists == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version is already released
+        id: check
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ steps.version.outputs.tag }}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract release notes from CHANGELOG.md
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          python .github/scripts/extract_changelog_section.py \
+            "${{ steps.version.outputs.version }}" release-notes.md
+
+      - name: Build distribution
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Create GitHub release
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.event.workflow_run.head_sha }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release-notes.md
+          files: dist/*
+
+  # Merges the release branch's version bump / changelog cutover back into
+  # develop, so the next release/vX.Y.Z branch cut from develop starts from
+  # an up-to-date version and changelog instead of the pre-release state.
+  sync-develop:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Merge main into develop
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          if git merge --no-ff origin/main -m "chore: merge main into develop after release"; then
+            git push origin develop
+          else
+            echo "::error::Merging main into develop after the release produced conflicts. Resolve manually: git checkout develop && git merge main"
+            exit 1
+          fi

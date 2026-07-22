@@ -252,6 +252,50 @@ The same tools can also be invoked directly, e.g. `pytest`, `ruff check .`,
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
 (see `conventionalcommit.json` for the accepted types).
 
+### Branching
+
+- `main` — released code only. Every commit on `main` is a tagged release or
+  about to become one via the release automation below. Never commit or PR
+  directly into it, other than from a `release/vX.Y.Z` branch.
+- `develop` — the integration branch. Feature and fix branches are cut from
+  `develop` and PR'd back into `develop`.
+- `release/vX.Y.Z` — cut from `develop` when preparing a release; carries
+  only the version bump and changelog cutover described below. PR'd into
+  `main`. `.github/workflows/ci.yml` has a `branch-policy` job that fails any
+  PR into `main` whose source branch doesn't match `release/*`.
+
+```
+feature/* ──PR──▶ develop ──branch──▶ release/vX.Y.Z ──PR──▶ main ──▶ tag + GitHub Release
+                     ▲                                         │
+                     └─────────────── auto merge-back ──────────┘
+```
+
+### Releasing
+
+1. From `develop`, create `release/vX.Y.Z` (decide the version from what's
+   under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md)).
+2. On that branch, in `CHANGELOG.md`, rename `## [Unreleased]` to
+   `## [X.Y.Z] - <YYYY-MM-DD>` and add a fresh, empty `## [Unreleased]` above
+   it.
+3. Bump `version` in `pyproject.toml` to match.
+4. Commit (e.g. `chore(release): vX.Y.Z`), open a PR from `release/vX.Y.Z`
+   into `main`, get it through CI, and merge it.
+
+Once CI passes on `main`, [`.github/workflows/release.yml`](.github/workflows/release.yml)
+takes over automatically:
+
+- Reads the version from `pyproject.toml`; if a `vX.Y.Z` tag already exists,
+  it stops here — so any other merge to `main` is a no-op.
+- Otherwise builds the sdist/wheel, pulls that version's section out of
+  `CHANGELOG.md` as release notes, and publishes a GitHub Release with the
+  tag and built artifacts attached.
+- Merges `main` back into `develop` so the next release branch starts from
+  the bumped version and trimmed changelog. If that merge conflicts, the job
+  fails and needs a manual `git checkout develop && git merge main`.
+
+No PyPI publishing is involved — see [Installation](#installation) for how
+consumers pin to a release tag.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

@@ -2,10 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, "release/**"]
   pull_request:
 
 jobs:
+  # PRs into main are only allowed from a release/vX.Y.Z branch (see README
+  # "Branching"). Feature/fix work targets develop instead.
+  branch-policy:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a release/* branch when targeting main
+        run: |
+          if [[ "${{ github.head_ref }}" != release/* ]]; then
+            echo "::error::PRs into main must come from a release/vX.Y.Z branch (got '${{ github.head_ref }}'). Target 'develop' instead."
+            exit 1
+          fi
+
   lint:
     runs-on: ubuntu-latest
     steps:
