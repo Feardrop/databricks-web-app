@@ -15,6 +15,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   call opened a connection that was never closed, leaking warehouse
   sessions/sockets over a dashboard's lifetime. Fixes #5.
 
+### Security
+
+- `UserTokenProvider._verify_token` no longer prints the raw bearer token or
+  decoded JWT claims to stdout under its (now-removed) `DEBUG` flag. Fixes #4.
+
+### Changed
+
+- Replaced all remaining `print()` calls in `auth/token_providers.py` and
+  `handlers/sql_handler.py` with `log.debug(...)`, so output goes through
+  normal logging levels/handlers instead of unconditionally hitting stdout.
+  Part of #4.
+- `AppConfig` no longer calls `logging.basicConfig(..., force=True)` in
+  development — a library shouldn't reconfigure the whole application's root
+  logger (`force=True` was tearing down any handlers the consuming app had
+  installed). Logging configuration is now entirely up to the consumer.
+  Part of #4.
+
 ## [0.0.1] - 2026-07-22
 
 ### Added
