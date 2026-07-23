@@ -55,7 +55,8 @@ Pin to a commit SHA instead of `@main` for reproducible installs, e.g.
 
 | Environment variable          | Required                | Description                                                        |
 | ------------------------------ | ------------------------ | -------------------------------------------------------------------- |
-| `DATABRICKS_HOST`               | yes                      | Workspace URL, e.g. `https://<workspace>.azuredatabricks.net`         |
+| `DATABRICKS_HOST`               | yes                      | Workspace URL, e.g. `https://<workspace>.azuredatabricks.net` (Azure/AWS/GCP) |
+| `DATABRICKS_HOST_SUFFIXES`      | no                       | Comma-separated accepted host suffixes; defaults to the Azure/AWS/GCP Databricks domains |
 | `DATABRICKS_WAREHOUSE_ID`       | yes                      | 16-character SQL warehouse ID                                        |
 | `PROJECT_NAME`                  | yes                      | Name of the consuming app (used in error-dialog mailto links)        |
 | `AZURE_CLIENT_ID`                | yes (or the proxy below) | Client ID of the Azure AD app used for M2M auth                      |
@@ -63,6 +64,7 @@ Pin to a commit SHA instead of `@main` for reproducible installs, e.g.
 | `AZURE_CLIENT_ID_PROXY`         | no                       | Name of another env var that holds the client ID                     |
 | `AZURE_CLIENT_SECRET_PROXY`     | no                       | Name of another env var that holds the client secret                 |
 | `AZURE_TENANT_ID`               | no                       | Fallback tenant ID if it can't be derived from the connection        |
+| `DATABRICKS_TOKEN_AUDIENCE`     | no                       | Expected JWT audience for user-token verification; defaults to Databricks' public-cloud production app ID |
 | `DATABRICKS_TOKEN`               | development only         | PAT used instead of OAuth while `SOLARA_APP_ENV=development`         |
 | `SOLARA_APP_ENV`                | no (default `production`)| `development` or `production`                                        |
 | `SECRETS_FILE`                  | no                       | Path to a dotenv-style file with any of the above                    |
@@ -297,9 +299,16 @@ takes over automatically:
 - Otherwise builds the sdist/wheel, pulls that version's section out of
   `CHANGELOG.md` as release notes, and publishes a GitHub Release with the
   tag and built artifacts attached.
-- Merges `main` back into `develop` so the next release branch starts from
-  the bumped version and trimmed changelog. If that merge conflicts, the job
-  fails and needs a manual `git checkout develop && git merge main`.
+- Opens a `chore/sync-develop-after-vX.Y.Z` PR merging `main` back into
+  `develop`, so the next release branch starts from the bumped version and
+  trimmed changelog. **This PR needs a human to merge it** — `develop` only
+  accepts changes via pull request, so the workflow can't push directly. If
+  the merge itself conflicts, the job fails instead and needs a manual
+  `git checkout develop && git merge main`.
+
+A daily [drift-check workflow](.github/workflows/drift-check.yml) fails
+loudly if `main` ever ends up ahead of `develop` (e.g. because a
+sync-develop PR was left unmerged) — that's the signal to go look for one.
 
 No PyPI publishing is involved — see [Installation](#installation) for how
 consumers pin to a release tag.

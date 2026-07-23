@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "databricks-web-app"
-version = "0.0.1"
+version = "0.1.0"
 description = "Reusable Python helpers for Solara web apps that authenticate users and query Databricks through OAuth and machine-to-machine flows."
 readme = "README.md"
 license = "MIT"
@@ -75,3 +75,16 @@ exclude = [
     "^venv",
 ]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["databricks_web_app"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+# Current baseline is ~81%; set a few points below that so incremental drops
+# fail CI without the threshold itself being aspirational.
+fail_under = 75

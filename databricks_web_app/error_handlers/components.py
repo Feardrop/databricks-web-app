@@ -17,6 +17,54 @@ log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class _DialogPalette:
+    """Resolved colors for one theme (light or dark) used in dialog HTML."""
+
+    body_text: str
+    details_border: str
+    details_bg: str
+    traceback_border: str
+    traceback_bg: str
+    code_bg: str
+    code_text: str
+    muted_text: str
+    secondary_button_bg: str
+    primary_button_bg: str
+
+
+_LIGHT_PALETTE = _DialogPalette(
+    body_text="#1f2933",
+    details_border="#d32f2f",
+    details_bg="#fff5f5",
+    traceback_border="#d9dee3",
+    traceback_bg="#f8fafc",
+    code_bg="#111827",
+    code_text="#f9fafb",
+    muted_text="#6b7280",
+    secondary_button_bg="#6b7280",
+    primary_button_bg="#1976d2",
+)
+
+_DARK_PALETTE = _DialogPalette(
+    body_text="#e5e7eb",
+    details_border="#f87171",
+    details_bg="#3f1d1d",
+    traceback_border="#374151",
+    traceback_bg="#1f2937",
+    code_bg="#0b0f19",
+    code_text="#e5e7eb",
+    muted_text="#9ca3af",
+    secondary_button_bg="#4b5563",
+    primary_button_bg="#2196f3",
+)
+
+
+def _resolve_palette(dark: bool) -> _DialogPalette:
+    """Return the color palette for the given effective theme."""
+    return _DARK_PALETTE if dark else _LIGHT_PALETTE
+
+
+@dataclass(frozen=True)
 class ErrorLink:
     """External documentation link rendered in the error dialog."""
 
@@ -45,6 +93,8 @@ class RichErrorDialogConfig:
     traceback_text: Optional[str] = None
     on_close: Optional[Callable[[], None]] = None
     force_page_reload: bool = False
+    occurred_at: Optional[datetime] = None
+    traceback_redacted: bool = False
 
     def __post_init__(self) -> None:
         """Validate dependent instruction fields."""
@@ -95,6 +145,7 @@ class RichErrorDialogBase(ABC):
             exception=exception,
             on_close=lambda: on_close(self),
         )
+        dialog_config = self._redact_traceback_in_production(dialog_config)
 
         if not self.clear_exception_on_close:
             dialog_config = replace(
@@ -108,6 +159,36 @@ class RichErrorDialogBase(ABC):
             max_width=self.max_width,
         )
         return True
+
+    def _redact_traceback_in_production(
+        self,
+        dialog_config: RichErrorDialogConfig,
+    ) -> RichErrorDialogConfig:
+        """Log the traceback server-side, then hide it outside development.
+
+        End users should not see raw Python tracebacks (internal paths,
+        dependency versions, query/schema details) in production, but
+        operators still need them -- so they're always logged here first,
+        regardless of what ends up in the rendered dialog.
+        """
+        if dialog_config.traceback_text is None:
+            return dialog_config
+
+        occurred_at = datetime.now(timezone.utc)
+
+        log.error(
+            "Unhandled error [%s] rendered by %s:\n%s",
+            occurred_at.isoformat(timespec="seconds"),
+            type(self).__name__,
+            dialog_config.traceback_text,
+        )
+
+        dialog_config = replace(dialog_config, occurred_at=occurred_at)
+
+        if self.app_config.is_development:
+            return dialog_config
+
+        return replace(dialog_config, traceback_text=None, traceback_redacted=True)
 
     @staticmethod
     def format_traceback(exception: BaseException) -> str:
@@ -173,19 +254,21 @@ class RichErrorDialogBase(ABC):
     def _details_section_html(
         cls,
         details: Optional[list[ErrorDetail]],
+        dark: bool = False,
     ) -> str:
         """Build the optional highlighted details section."""
         if not details:
             return ""
 
         details_html = cls._details_html(details)
+        palette = _resolve_palette(dark)
 
         return f"""
             <div style="
                 margin: 0 0 18px 0;
                 padding: 12px 14px;
-                border-left: 4px solid #d32f2f;
-                background: #fff5f5;
+                border-left: 4px solid {palette.details_border};
+                background: {palette.details_bg};
                 border-radius: 4px;
             ">
                 <ul style="margin: 0; padding-left: 20px;">
@@ -226,17 +309,22 @@ class RichErrorDialogBase(ABC):
         """
 
     @staticmethod
-    def _traceback_section_html(traceback_text: Optional[str]) -> str:
+    def _traceback_section_html(
+        traceback_text: Optional[str],
+        dark: bool = False,
+    ) -> str:
         """Build the optional traceback section."""
         if traceback_text is None:
             return ""
 
+        palette = _resolve_palette(dark)
+
         return f"""
             <details style="
                 margin-top: 18px;
-                border: 1px solid #d9dee3;
+                border: 1px solid {palette.traceback_border};
                 border-radius: 6px;
-                background: #f8fafc;
+                background: {palette.traceback_bg};
             ">
                 <summary style="
                     cursor: pointer;
@@ -254,25 +342,28 @@ class RichErrorDialogBase(ABC):
                     word-break: break-word;
                     font-size: 12px;
                     line-height: 1.4;
-                    background: #111827;
-                    color: #f9fafb;
+                    background: {palette.code_bg};
+                    color: {palette.code_text};
                     border-radius: 0 0 6px 6px;
                 ">{html.escape(traceback_text)}</pre>
             </details>
         """
 
     @classmethod
-    def body_html(cls, config: RichErrorDialogConfig) -> str:
+    def body_html(cls, config: RichErrorDialogConfig, dark: bool = False) -> str:
         """Build the full dialog body as HTML."""
-        details_section = cls._details_section_html(config.details)
+        palette = _resolve_palette(dark)
+        details_section = cls._details_section_html(config.details, dark=dark)
         instructions_section = cls._instructions_section_html(config)
-        traceback_section = cls._traceback_section_html(config.traceback_text)
+        traceback_section = cls._traceback_section_html(
+            config.traceback_text, dark=dark
+        )
 
         return f"""
             <div style="
                 padding: 24px;
                 line-height: 1.45;
-                color: #1f2933;
+                color: {palette.body_text};
             ">
                 <h2 style="
                     margin: 0 0 12px 0;
@@ -293,6 +384,24 @@ class RichErrorDialogBase(ABC):
         """
 
 
+def _traceback_section_text(
+    dialog_config: RichErrorDialogConfig, timestamp: str
+) -> str:
+    """Build the "Complete error details" section of the mailto body."""
+    if dialog_config.traceback_text:
+        return dialog_config.traceback_text
+
+    if dialog_config.traceback_redacted:
+        return (
+            "The complete error details were logged server-side but are not "
+            "included here. Please give the developers this email's "
+            f"timestamp ({timestamp}) so they can find the corresponding "
+            "log entry."
+        )
+
+    return "No traceback available."
+
+
 def _get_mailto_link(
     dialog_config: RichErrorDialogConfig, app_config: AppConfig
 ) -> Optional[str]:
@@ -301,15 +410,15 @@ def _get_mailto_link(
         log.error("No contact email configured for error dialog.")
         return None
 
-    subject = (
-        f"[{app_config.project_name}] {dialog_config.title} "
-        f"({datetime.isoformat(datetime.now(timezone.utc), timespec='seconds')})"
+    timestamp = datetime.isoformat(
+        dialog_config.occurred_at or datetime.now(timezone.utc), timespec="seconds"
     )
+    subject = f"[{app_config.project_name}] {dialog_config.title} ({timestamp})"
     body = (
         f"{dialog_config.title}\n\n"
         f"{dialog_config.description}\n\n"
         "Complete error details:\n"
-        f"{dialog_config.traceback_text or 'No traceback available.'}"
+        f"{_traceback_section_text(dialog_config, timestamp)}"
     )
 
     return (
@@ -328,6 +437,8 @@ def RichErrorDialogComponent(
     # pylint: disable=invalid-name
     """Render a reusable rich modal error dialog."""
     open_dialog, set_open_dialog = solara.use_state(True)
+    dark = solara.lab.use_dark_effective()
+    palette = _resolve_palette(dark)
 
     def close_dialog() -> None:
         """Close the dialog and clear the captured exception if configured."""
@@ -344,16 +455,18 @@ def RichErrorDialogComponent(
         with solara.v.Card():
             solara.HTML(
                 tag="div",
-                unsafe_innerHTML=RichErrorDialogBase.body_html(dialog_config),
+                unsafe_innerHTML=RichErrorDialogBase.body_html(
+                    dialog_config, dark=dark
+                ),
             )
 
             if dialog_config.force_page_reload:
                 solara.HTML(
                     tag="div",
-                    unsafe_innerHTML="""
+                    unsafe_innerHTML=f"""
                         <div style="
                             padding: 0 24px 12px 24px;
-                            color: #6b7280;
+                            color: {palette.muted_text};
                             font-size: 13px;
                         ">
                             This error cannot be recovered automatically.
@@ -400,7 +513,7 @@ def RichErrorDialogComponent(
                                     href="{mailto_link}"
                                     style="
                                         {button_style}
-                                        background: #6b7280;
+                                        background: {palette.secondary_button_bg};
                                         color: white;
                                     "
                                 >
@@ -417,7 +530,7 @@ def RichErrorDialogComponent(
                                 onclick="window.location.reload()"
                                 style="
                                     {button_style}
-                                    background: #1976d2;
+                                    background: {palette.primary_button_bg};
                                     color: white;
                                 "
                             >
