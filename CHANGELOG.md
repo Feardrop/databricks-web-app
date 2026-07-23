@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AppConfig` now raises a distinct `ConfigurationError` when
+  `AZURE_CLIENT_ID_PROXY`/`AZURE_CLIENT_SECRET_PROXY` is configured but the
+  variable it points to isn't found, instead of the generic "missing M2M
+  client ID/secret" message that previously fired for both "nothing
+  configured at all" and "the configured proxy variable is missing/empty".
+  Fixes #20.
+
 ## [0.1.0] - 2026-07-22
 
 ### Added
