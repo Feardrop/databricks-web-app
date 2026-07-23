@@ -243,12 +243,13 @@ from databricks_web_app import AppConfig
 
 @pytest.fixture(scope="module")
 def live_app_config() -> AppConfig:
-    with open(
-        pathlib.Path(__file__).resolve().parents[1] / "pyproject.toml", mode="rb"
-    ) as fp:
+    root_path = pathlib.Path(__file__).resolve().parents[1]
+
+    with open(root_path / "pyproject.toml", mode="rb") as fp:
         pyproject_config = tomli.load(fp)
 
     env = {k: v for k, v in dotenv_values().items() if v is not None}
+    env["SECRETS_FILE"] = str(root_path / ".env-secrets")
 
     return AppConfig(
         environ=env,
