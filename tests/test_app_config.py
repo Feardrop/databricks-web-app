@@ -211,5 +211,31 @@ class TestAppConfig:
         environ = dict(valid_environ)
         del environ["AZURE_CLIENT_ID"]
 
-        with pytest.raises(ConfigurationError):
+        with pytest.raises(ConfigurationError, match="Missing M2M client ID"):
+            AppConfig(environ=environ)
+
+    def test_configured_proxy_variable_missing_raises_distinct_error(
+        self, valid_environ: dict[str, str]
+    ):
+        environ = dict(valid_environ)
+        del environ["AZURE_CLIENT_ID"]
+        environ["AZURE_CLIENT_ID_PROXY"] = "OTHER_CLIENT_ID"
+
+        with pytest.raises(
+            ConfigurationError,
+            match="proxy variable OTHER_CLIENT_ID.*was not found",
+        ):
+            AppConfig(environ=environ)
+
+    def test_configured_secret_proxy_variable_missing_raises_distinct_error(
+        self, valid_environ: dict[str, str]
+    ):
+        environ = dict(valid_environ)
+        del environ["AZURE_CLIENT_SECRET"]
+        environ["AZURE_CLIENT_SECRET_PROXY"] = "OTHER_CLIENT_SECRET"
+
+        with pytest.raises(
+            ConfigurationError,
+            match="proxy variable OTHER_CLIENT_SECRET.*was not found",
+        ):
             AppConfig(environ=environ)

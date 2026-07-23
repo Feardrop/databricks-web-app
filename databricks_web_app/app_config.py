@@ -596,7 +596,11 @@ class AppConfig:
             self._sources[field_name] = f"secrets-file proxy: {proxy_name}"
             return _parse_nonempty_string(value)
 
-        return None
+        raise ConfigurationError(
+            f"{field_name} is configured to use proxy variable {proxy_name}, "
+            f"but {proxy_name} was not found in the environment or secrets "
+            "file. Check that the variable it points to is actually set."
+        )
 
     def _resolve_direct_or_proxy_value(
         self,
