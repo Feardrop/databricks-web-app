@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- README section on testing a consuming project against a live Databricks
+  connection in CI: marking those tests `slow`, building a real `AppConfig`
+  from `.env`/`.env-secrets`, wiring a `manual`-stage pre-commit hook to run
+  them on demand, and injecting a CI secret through `AZURE_CLIENT_SECRET_PROXY`.
+  Fixes #21.
+
 ## [0.1.0] - 2026-07-22
 
 ### Added
