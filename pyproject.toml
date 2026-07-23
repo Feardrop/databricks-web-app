@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "databricks-web-app"
-version = "0.1.0"
+version = "0.1.1"
 description = "Reusable Python helpers for Solara web apps that authenticate users and query Databricks through OAuth and machine-to-machine flows."
 readme = "README.md"
 license = "MIT"

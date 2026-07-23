@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-23
+
 ### Added
 
 - README section on testing a consuming project against a live Databricks
@@ -186,6 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (matching CI); they previously also targeted `tests/`, where undocumented
   test methods and `tests/__init__.py` made the hooks fail.
 
-[Unreleased]: https://github.com/feardrop/databricks-web-app/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/feardrop/databricks-web-app/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/feardrop/databricks-web-app/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/feardrop/databricks-web-app/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/feardrop/databricks-web-app/releases/tag/v0.0.1
