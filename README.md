@@ -214,6 +214,103 @@ layout. After filling in its `.env`/`.env-secrets`, one command starts it:
 docker compose -f docker-compose-dev.yml up --build
 ```
 
+### Testing a consuming project against a live Databricks connection in CI
+
+Most of a consuming project's tests should mock `AbstractHandler.get_connection`
+the way this repo's own test suite does (see `tests/test_handlers.py`), so they
+run without any real credentials. But some tests genuinely need to exercise the
+real OAuth/M2M flow end-to-end against a live workspace — those need a real
+`AppConfig` and a real secret, which changes both the fixture and the CI setup.
+
+**1. Mark those tests `slow` and build a real `AppConfig` for them.** This
+package's own `pyproject.toml` already declares the marker
+(`slow: marks tests as slow, use e.g. for tests requiring a Databricks
+connection`); add the same `[tool.pytest.ini_options]` marker declaration to
+the consuming project so `pytest --strict-markers` doesn't reject it. Load the
+project's real `.env`/`.env-secrets` into `AppConfig` instead of a synthetic
+fixture, passing values that only exist in the consuming project's own
+`pyproject.toml` (like `project_name`/`contact_email`) explicitly:
+
+```python
+import pathlib
+import tomli
+from dotenv import dotenv_values
+
+import pytest
+
+from databricks_web_app import AppConfig
+
+
+@pytest.fixture(scope="module")
+def live_app_config() -> AppConfig:
+    root_path = pathlib.Path(__file__).resolve().parents[1]
+
+    with open(root_path / "pyproject.toml", mode="rb") as fp:
+        pyproject_config = tomli.load(fp)
+
+    env = {k: v for k, v in dotenv_values().items() if v is not None}
+    env["SECRETS_FILE"] = str(root_path / ".env-secrets")
+
+    return AppConfig(
+        environ=env,
+        project_name=pyproject_config["project"]["name"],
+        contact_email=pyproject_config["project"]["authors"][0]["email"],
+    )
+
+
+@pytest.mark.slow
+def test_can_query_databricks(live_app_config: AppConfig):
+    ...
+```
+
+**2. Give the consuming project's own `.pre-commit-config.yaml` a hook that
+runs only those tests, on demand.** Put it on a `manual` stage (not `pre-push`,
+which should stay fast and mock-only) so it never blocks a regular commit or
+push and only runs when explicitly requested:
+
+```yaml
+- id: pytest_lib_slow
+  name: pytest (slow, live Databricks connection)
+  entry: pytest -m slow
+  language: system
+  pass_filenames: false
+  always_run: true
+  stages: [manual]
+```
+
+**3. In CI, inject the secret under whatever name your secrets manager uses,
+and point `AZURE_CLIENT_SECRET_PROXY` at it.** This is exactly what the
+`*_PROXY` config attributes exist for (see [Configuration](#configuration)):
+the CI secret's name (`CLIENT_SECRET_TOOLS` below) doesn't have to match what
+this package expects (`AZURE_CLIENT_SECRET`), and `AppConfig` raises a clear
+`ConfigurationError` if the proxy variable it's pointed at turns out to be
+missing.
+
+```yaml
+test_tool_logic:
+  runs-on: [self-hosted, linux]
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+    - run: python -m pip install --upgrade pip
+    - run: python -m pip install -r requirements-dev.txt
+    - name: Provide secret in .env-secrets
+      run: echo "CLIENT_SECRET_TOOLS=${{ secrets.CLIENT_SECRET_TOOLS }}" > .env-secrets
+    - run: pre-commit run --all-files --hook-stage manual pytest_lib_slow
+```
+
+```env
+# .env
+AZURE_TENANT_ID=...
+CLIENT_ID_TOOLS=...
+DATABRICKS_HOST=...
+DATABRICKS_WAREHOUSE_ID=...
+AZURE_CLIENT_ID_PROXY=CLIENT_ID_TOOLS
+AZURE_CLIENT_SECRET_PROXY=CLIENT_SECRET_TOOLS
+```
+
 ## Development
 
 Clone the repository and install it in editable mode along with the
