@@ -43,7 +43,7 @@ def _validate_identifier(data_source: str) -> str:
 
 
 def _tag_statement(statement: str, identifier: Optional[QueryIdentifier]) -> str:
-    """Prepend ``identifier`` to ``statement`` as a leading SQL comment.
+    """Append ``identifier`` to ``statement`` as a trailing SQL comment.
 
     ``identifier`` may be a plain string or a callable that receives
     ``statement`` and returns the string to use. Returns ``statement``
@@ -63,7 +63,7 @@ def _tag_statement(statement: str, identifier: Optional[QueryIdentifier]) -> str
             "terminate the SQL comment early."
         )
 
-    return f"/* {resolved} */\n{statement}"
+    return f"{statement}\n/* {resolved} */"
 
 
 class AbstractHandler(ABC):
@@ -79,7 +79,7 @@ class AbstractHandler(ABC):
         Args:
             config (AppConfig): Configuration object containing necessary settings.
             query_identifier (Optional[QueryIdentifier]): Default identifier
-                prepended as a SQL comment to every statement this handler
+                appended as a SQL comment to every statement this handler
                 sends, unless overridden per call (see ``fetchall_df``'s and
                 ``exec_statement``'s ``query_identifier`` parameter). Either a
                 plain string or a callable receiving the outgoing statement
@@ -134,7 +134,7 @@ class AbstractHandler(ABC):
 
         If ``arrow`` is True, return as an arrow table. ``query_identifier``
         (a string, or a callable receiving the statement and returning the
-        string to use) is prepended to the statement as a SQL comment.
+        string to use) is appended to the statement as a SQL comment.
         """
         statement = _tag_statement(statement, query_identifier)
 

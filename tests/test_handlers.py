@@ -278,7 +278,7 @@ class TestQueryIdentifier:
 
         handler.fetchall_df("SELECT 1", query_identifier="my-feature")
 
-        assert cursor.executed == ["/* my-feature */\nSELECT 1"]
+        assert cursor.executed == ["SELECT 1\n/* my-feature */"]
 
     def test_fetchall_df_tags_with_callable_identifier(self, app_config: AppConfig):
         handler, _, cursor = _make_handler(app_config)
@@ -287,14 +287,14 @@ class TestQueryIdentifier:
             "SELECT 1", query_identifier=lambda statement: f"len={len(statement)}"
         )
 
-        assert cursor.executed == ["/* len=8 */\nSELECT 1"]
+        assert cursor.executed == ["SELECT 1\n/* len=8 */"]
 
     def test_exec_statement_tags_with_string_identifier(self, app_config: AppConfig):
         handler, _, cursor = _make_handler(app_config)
 
         handler.exec_statement("CREATE TABLE foo", query_identifier="my-feature")
 
-        assert cursor.executed == ["/* my-feature */\nCREATE TABLE foo"]
+        assert cursor.executed == ["CREATE TABLE foo\n/* my-feature */"]
 
     def test_get_dataframe_tags_with_string_identifier(self, app_config: AppConfig):
         _, connection, cursor = _make_handler(app_config)
@@ -304,7 +304,7 @@ class TestQueryIdentifier:
                 "SELECT 1", conn, query_identifier="my-feature"
             )
 
-        assert cursor.executed == ["/* my-feature */\nSELECT 1"]
+        assert cursor.executed == ["SELECT 1\n/* my-feature */"]
 
     def test_instance_default_identifier_used_when_no_override(
         self, app_config: AppConfig
@@ -314,7 +314,7 @@ class TestQueryIdentifier:
 
         handler.fetchall_df("SELECT 1")
 
-        assert cursor.executed == ["/* instance-default */\nSELECT 1"]
+        assert cursor.executed == ["SELECT 1\n/* instance-default */"]
 
     def test_per_call_identifier_overrides_instance_default(
         self, app_config: AppConfig
@@ -324,7 +324,7 @@ class TestQueryIdentifier:
 
         handler.fetchall_df("SELECT 1", query_identifier="per-call")
 
-        assert cursor.executed == ["/* per-call */\nSELECT 1"]
+        assert cursor.executed == ["SELECT 1\n/* per-call */"]
 
     def test_empty_identifier_leaves_statement_unchanged(self, app_config: AppConfig):
         handler, _, cursor = _make_handler(app_config)

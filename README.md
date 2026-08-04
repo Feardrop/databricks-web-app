@@ -113,10 +113,10 @@ example.
 
 `fetchall_df`, `exec_statement`, and `get_dataframe` accept an optional
 `query_identifier` — a plain string, or a callable that receives the
-outgoing statement and returns the string to use — prepended to the query as
-a leading SQL comment before it's sent. This lets you identify which part of
-your app issued a query when reviewing query history later, without relying
-on a Databricks-specific mechanism:
+outgoing statement and returns the string to use — appended to the query as
+a trailing SQL comment before it's sent. This lets you identify which part
+of your app issued a query when reviewing query history later, without
+relying on a Databricks-specific mechanism:
 
 ```python
 # A static string, attached to just this call:
