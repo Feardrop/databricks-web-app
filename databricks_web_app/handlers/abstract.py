@@ -3,7 +3,7 @@
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Callable, Iterable, Optional, Union
 
 from databricks_web_app.app_config import AppConfig
 
@@ -19,6 +19,8 @@ _IDENTIFIER_PART = r"(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)"
 _IDENTIFIER_PATTERN = re.compile(
     rf"^{_IDENTIFIER_PART}(?:\.{_IDENTIFIER_PART}){{0,2}}$"
 )
+
+QueryIdentifier = Union[str, Callable[[str], str]]
 
 
 def _validate_identifier(data_source: str) -> str:
@@ -40,16 +42,51 @@ def _validate_identifier(data_source: str) -> str:
     return data_source
 
 
+def _tag_statement(statement: str, identifier: Optional[QueryIdentifier]) -> str:
+    """Prepend ``identifier`` to ``statement`` as a leading SQL comment.
+
+    ``identifier`` may be a plain string or a callable that receives
+    ``statement`` and returns the string to use. Returns ``statement``
+    unchanged if ``identifier`` is ``None`` or resolves to an empty string.
+    """
+    if identifier is None:
+        return statement
+
+    resolved = identifier(statement) if callable(identifier) else identifier
+
+    if not resolved:
+        return statement
+
+    if "*/" in resolved:
+        raise ValueError(
+            f"Query identifier must not contain '*/': {resolved!r} would "
+            "terminate the SQL comment early."
+        )
+
+    return f"/* {resolved} */\n{statement}"
+
+
 class AbstractHandler(ABC):
     """Abstract class to build SQL queries sender."""
 
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        query_identifier: Optional[QueryIdentifier] = None,
+    ) -> None:
         """Initializes the class with the provided configuration.
 
         Args:
             config (AppConfig): Configuration object containing necessary settings.
+            query_identifier (Optional[QueryIdentifier]): Default identifier
+                prepended as a SQL comment to every statement this handler
+                sends, unless overridden per call (see ``fetchall_df``'s and
+                ``exec_statement``'s ``query_identifier`` parameter). Either a
+                plain string or a callable receiving the outgoing statement
+                and returning the string to use.
         """
         self.config = config
+        self.query_identifier = query_identifier
 
     @abstractmethod
     def get_connection(self) -> "Connection":
@@ -60,27 +97,47 @@ class AbstractHandler(ABC):
         self,
         statement: str,
         arrow: bool = True,
+        query_identifier: Optional[QueryIdentifier] = None,
     ) -> pd.DataFrame:
         """Fetch query result via user authentication."""
-        with self.get_connection() as connection:
-            return self.get_dataframe(statement, connection, arrow)
+        tagged = _tag_statement(
+            statement,
+            query_identifier if query_identifier is not None else self.query_identifier,
+        )
 
-    def exec_statement(self, statement: str) -> None:
+        with self.get_connection() as connection:
+            return self.get_dataframe(tagged, connection, arrow)
+
+    def exec_statement(
+        self,
+        statement: str,
+        query_identifier: Optional[QueryIdentifier] = None,
+    ) -> None:
         """Execute a statement via user authentication."""
+        tagged = _tag_statement(
+            statement,
+            query_identifier if query_identifier is not None else self.query_identifier,
+        )
+
         with self.get_connection() as connection:
             with connection.cursor() as cursor:
-                cursor.execute(statement)
+                cursor.execute(tagged)
 
     @staticmethod
     def get_dataframe(
         statement: str,
         connection: "Connection",
         arrow: bool = True,
+        query_identifier: Optional[QueryIdentifier] = None,
     ) -> pd.DataFrame:
         """Fetch query result as pandas DataFrame.
 
-        If ``arrow`` is True, return as an arrow table.
+        If ``arrow`` is True, return as an arrow table. ``query_identifier``
+        (a string, or a callable receiving the statement and returning the
+        string to use) is prepended to the statement as a SQL comment.
         """
+        statement = _tag_statement(statement, query_identifier)
+
         with connection.cursor() as cursor:
             cursor.execute(statement)
 
