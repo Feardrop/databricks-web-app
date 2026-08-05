@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AbstractHandler.fetchall_df`, `exec_statement`, and `get_dataframe` accept
+  an optional `query_identifier` (a string, or a callable receiving the
+  outgoing statement and returning the string to use), appended to the
+  statement as a trailing SQL comment before it's sent. `AbstractHandler`'s
+  constructor accepts it too, as a per-handler default overridable per
+  call. Fixes #27.
+
 ## [0.1.1] - 2026-07-23
 
 ### Added

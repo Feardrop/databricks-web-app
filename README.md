@@ -109,6 +109,36 @@ Build a custom connector by subclassing `AbstractConnector` and wiring your
 own handler factories; see the docstring on `AbstractConnector` for a minimal
 example.
 
+#### Tagging queries with a source-identifying comment
+
+`fetchall_df`, `exec_statement`, and `get_dataframe` accept an optional
+`query_identifier` — a plain string, or a callable that receives the
+outgoing statement and returns the string to use — appended to the query as
+a trailing SQL comment before it's sent. This lets you identify which part
+of your app issued a query when reviewing query history later, without
+relying on a Databricks-specific mechanism:
+
+```python
+# A static string, attached to just this call:
+df = connector.user_handler.fetchall_df(
+    "SELECT * FROM main.default.my_table",
+    query_identifier="dashboard.orders_page",
+)
+
+# A callable, so the tag can depend on the query itself:
+df = connector.user_handler.fetchall_df(
+    "SELECT * FROM main.default.my_table",
+    query_identifier=lambda statement: f"len={len(statement)}",
+)
+```
+
+Pass `query_identifier` to a handler's constructor instead to set a default
+used for every call that doesn't override it:
+
+```python
+handler = AccessTokenUserHandler(config, query_identifier="dashboard")
+```
+
 ### Reusing one connector across requests with DatabricksApp
 
 Constructing a connector on every request is wasteful. `DatabricksApp` holds
